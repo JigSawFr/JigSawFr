@@ -8,8 +8,8 @@
 </div>
 
 ### 🏠 Smart home · Maison connectée
-<sub>My last year on GitHub, built in 3D: every pillar in the garden is a day, every lit window a month. The house dresses up for the season (Halloween, Christmas, winter…).<br>
-🇫🇷 Ma dernière année sur GitHub en 3D : chaque pilier du jardin est un jour, chaque fenêtre un mois. La maison se met aux couleurs de la saison.</sub>
+<sub>My last year on GitHub, built in 3D: every pillar in the garden is a day, every lit window a month. Live sky (time of day + average weather over France), garage open while PRs are in review, a car in the driveway after a release, an alarm when someone opens an issue — and seasonal decorations.<br>
+🇫🇷 Ma dernière année sur GitHub en 3D : chaque pilier est un jour, chaque fenêtre un mois. Ciel en direct (heure + météo moyenne de la France), garage ouvert si des PR attendent, voiture après une release, alarme si quelqu'un ouvre une issue — et déco de saison.</sub>
 
 <img src="assets/house.svg" width="100%" alt="Isometric smart home made from contributions">
 
