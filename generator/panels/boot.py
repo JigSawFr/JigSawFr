@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..svg import AMBER, CYAN, DIM, GREEN, MAGENTA, document, esc, text, titlebar
+from ..svg import AMBER, CYAN, DIM, GREEN, MAGENTA, THEME, document, esc, text, titlebar
 
 BANNER = [
     "     ██╗██╗ ██████╗ ███████╗ █████╗ ██╗    ██╗",
@@ -81,6 +81,7 @@ def render(cfg: dict, data: dict, st: dict) -> str:
         ("OK", f"Mounted /dev/github — {data['repo_count']} public repos, {st['stars']} stars"),
         ("OK", f"Reached target contributions.target — {data['total']} events / 365 days"),
         ("OK", f"Started streak.timer — current {st['current_streak']}d, record {st['longest_streak']}d"),
+        ("OK", f"Started {THEME['boot']} {THEME['icon']}"),
         ("WARN", "coffee.service: level low — please refill ☕ / café à recharger"),
     ]
     for i, (lvl, msg) in enumerate(log):

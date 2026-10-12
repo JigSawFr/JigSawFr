@@ -8,32 +8,20 @@ tagline_fr = "IT · Domotique · Sécurité — j'automatise ma maison, puis je 
 location = "France"
 hostname = "homelab.local"
 
-# Each month of the last year becomes a room of the house (oldest → newest).
-rooms = [
-  { name = "GARAGE",      device = "lock" },
-  { name = "ENTRÉE",      device = "camera" },
-  { name = "SALON",       device = "bulb" },
-  { name = "CUISINE",     device = "thermo" },
-  { name = "BUREAU",      device = "bulb" },
-  { name = "CHAMBRE",     device = "sensor" },
-  { name = "SDB",         device = "thermo" },
-  { name = "BUANDERIE",   device = "sensor" },
-  { name = "GRENIER",     device = "camera" },
-  { name = "JARDIN",      device = "bulb" },
-  { name = "VÉRANDA",     device = "thermo" },
-  { name = "SERVER ROOM", device = "server" },
-]
-
-# Shown as Home Assistant style "integrations". TODO: add Zigbee2MQTT, ESPHome, Proxmox… if you use them.
+# Shown as Home Assistant style "integrations" (4 per row, the grid grows as needed).
 integrations = [
-  { name = "Home Assistant", kind = "Domotique · core",       short = "HA",  color = "#18bcf2" },
-  { name = "Homebridge",     kind = "HomeKit bridge",          short = "HB",  color = "#ff9f43" },
-  { name = "Docker",         kind = "Containers",              short = "DK",  color = "#2496ed" },
-  { name = "Traefik",        kind = "Reverse proxy · TLS",     short = "TR",  color = "#24a1c1" },
-  { name = "CrowdSec",       kind = "IPS · bouncers",          short = "CS",  color = "#ff4d6d" },
-  { name = "Runtipi",        kind = "Self-hosted apps",        short = "RT",  color = "#39ff88" },
-  { name = "ASUSTOR NAS",    kind = "Storage · homelab",       short = "NAS", color = "#ffb547" },
-  { name = "MCP servers",    kind = "AI ↔ infra gateways",     short = "MCP", color = "#ff2fd0" },
+  { name = "Home Assistant", kind = "Domotique · core",      short = "HA",  color = "#18bcf2" },
+  { name = "HA Yellow",      kind = "Hub · Zigbee/Thread",   short = "HY",  color = "#ffd166" },
+  { name = "Zigbee2MQTT",    kind = "Zigbee bridge",         short = "Z2M", color = "#ffb547" },
+  { name = "ESPHome",        kind = "DIY sensors · ESP32",   short = "ESP", color = "#a3e635" },
+  { name = "UniFi",          kind = "Network · Wi-Fi",       short = "UI",  color = "#3b82f6" },
+  { name = "Traefik",        kind = "Reverse proxy · TLS",   short = "TR",  color = "#24a1c1" },
+  { name = "CrowdSec",       kind = "IPS · bouncers",        short = "CS",  color = "#ff4d6d" },
+  { name = "Docker",         kind = "Containers",            short = "DK",  color = "#2496ed" },
+  { name = "Dockhand",       kind = "Docker management",     short = "DH",  color = "#39ff88" },
+  { name = "Paperless-ngx",  kind = "Documents · OCR",       short = "PL",  color = "#17c08f" },
+  { name = "Plex",           kind = "Media server",          short = "PX",  color = "#e5a00d" },
+  { name = "MCP servers",    kind = "AI ↔ infra gateways",   short = "MCP", color = "#ff2fd0" },
 ]
 
 # Public repositories shown in "Featured projects" (stars & descriptions are fetched live).

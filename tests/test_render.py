@@ -5,6 +5,7 @@ import xml.dom.minidom
 from pathlib import Path
 
 from generator import data as data_mod
+from generator import seasons, svg
 from generator.main import PANELS, ROOT, featured_table
 
 CFG = tomllib.loads((ROOT / "generator" / "config.toml").read_text(encoding="utf-8"))
@@ -12,6 +13,7 @@ CFG = tomllib.loads((ROOT / "generator" / "config.toml").read_text(encoding="utf
 
 class RenderTest(unittest.TestCase):
     def setUp(self):
+        svg.use_theme(seasons.theme("cyber"))
         self.data = data_mod.sample(CFG["login"], today=dt.date(2026, 10, 12))
         self.st = data_mod.stats(self.data)
 
@@ -23,6 +25,24 @@ class RenderTest(unittest.TestCase):
                 self.assertNotIn("<script", svg)  # GitHub strips/blocks JS anyway
                 self.assertNotIn("foreignObject", svg)
                 self.assertLess(len(svg), 1_000_000)
+
+    def test_every_season_renders(self):
+        for key in seasons.THEMES:
+            svg.use_theme(seasons.theme(key))
+            for name, mod in PANELS.items():
+                with self.subTest(season=key, panel=name):
+                    xml.dom.minidom.parseString(mod.render(CFG, self.data, self.st).encode())
+
+    def test_season_calendar(self):
+        cases = {
+            (2026, 10, 31): "halloween", (2026, 12, 24): "noel", (2026, 12, 31): "nouvel_an",
+            (2027, 1, 1): "nouvel_an", (2027, 2, 10): "hiver", (2027, 4, 1): "printemps",
+            (2027, 7, 14): "quatorze_juillet", (2027, 8, 1): "ete", (2027, 9, 30): "automne",
+            (2027, 11, 15): "automne",
+        }
+        for (y, m, d), key in cases.items():
+            with self.subTest(date=(y, m, d)):
+                self.assertEqual(seasons.season_key(dt.date(y, m, d)), key)
 
     def test_streaks(self):
         days = [{"date": f"2026-01-{d:02d}", "count": c} for d, c in enumerate([1, 1, 0, 2, 3, 1, 0], 1)]

@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import os
 import tomllib
 import urllib.parse
 from pathlib import Path
 
 from . import data as data_mod
+from . import seasons, svg
 from .panels import boot, house, integrations, soc
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -52,10 +54,10 @@ def readme(cfg: dict, data: dict, generated: str) -> str:
 </div>
 
 ### 🏠 Smart home · Maison connectée
-<sub>My last 12 months of GitHub activity, wired into a house: every room is a month, every floor tile a day, devices light up when I ship.<br>
-🇫🇷 Mes 12 derniers mois d'activité GitHub câblés dans une maison : chaque pièce est un mois, chaque dalle un jour.</sub>
+<sub>My last year on GitHub, built in 3D: every pillar in the garden is a day, every lit window a month. The house dresses up for the season (Halloween, Christmas, winter…).<br>
+🇫🇷 Ma dernière année sur GitHub en 3D : chaque pilier du jardin est un jour, chaque fenêtre un mois. La maison se met aux couleurs de la saison.</sub>
 
-<img src="assets/house.svg" width="100%" alt="Smart home floorplan made from contributions">
+<img src="assets/house.svg" width="100%" alt="Isometric smart home made from contributions">
 
 ### 🛡️ Security Operations Center
 <img src="assets/soc.svg" width="100%" alt="SOC dashboard: radar, streaks, alerts, 30-day activity">
@@ -77,11 +79,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--offline", action="store_true", help="use deterministic sample data")
     ap.add_argument("--out", type=Path, default=ROOT)
+    ap.add_argument("--season", default=os.environ.get("PROFILE_SEASON") or None,
+                    help=f"force a theme: {', '.join(seasons.THEMES)} (default: from today's date)")
     args = ap.parse_args()
 
     cfg = tomllib.loads((ROOT / "generator" / "config.toml").read_text(encoding="utf-8"))
     data = data_mod.load(cfg["login"], offline=args.offline)
     st = data_mod.stats(data)
+    svg.use_theme(seasons.theme(args.season or seasons.season_key(dt.date.today())))
 
     assets = args.out / "assets"
     assets.mkdir(parents=True, exist_ok=True)
@@ -89,7 +94,7 @@ def main() -> None:
         (assets / f"{name}.svg").write_text(mod.render(cfg, data, st), encoding="utf-8")
     generated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
     (args.out / "README.md").write_text(readme(cfg, data, generated), encoding="utf-8")
-    print(f"rendered {len(PANELS)} panels for {data['login']} ({data['total']} contributions)")
+    print(f"rendered {len(PANELS)} panels for {data['login']} ({data['total']} contributions, theme {svg.THEME['key']})")
 
 
 if __name__ == "__main__":

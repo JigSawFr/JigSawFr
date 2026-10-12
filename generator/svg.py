@@ -25,6 +25,22 @@ RED = "#ff4d6d"
 
 HEAT = ["#111a28", "#0a4452", "#087c8f", "#00b8d4", "#7af6ff"]
 
+# Active seasonal theme (see seasons.py); main.py sets it before rendering.
+THEME: dict = {"neon": (CYAN, MAGENTA), "heat": HEAT}
+
+
+def use_theme(theme: dict) -> None:
+    THEME.clear()
+    THEME.update(theme)
+
+
+def shade(hex_color: str, k: float) -> str:
+    """Darken (k<1) or lighten (k>1) a #rrggbb colour."""
+    r, g, b = (int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
+    f = (lambda c: round(c * k)) if k <= 1 else (lambda c: round(c + (255 - c) * (k - 1)))
+    return "#" + "".join(f"{max(0, min(255, f(c))):02x}" for c in (r, g, b))
+
+
 BASE_CSS = f"""
 text {{ font-family: {FONT}; fill: {TEXT}; }}
 .dim {{ fill: {DIM}; }}
@@ -41,7 +57,10 @@ text {{ font-family: {FONT}; fill: {TEXT}; }}
 @keyframes scan {{ from {{ transform: translateY(-40px); }} to {{ transform: translateY(var(--h)); }} }}
 """
 
-DEFS = f"""
+
+def defs() -> str:
+    a, b = THEME["neon"]
+    return f"""
 <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
   <feGaussianBlur stdDeviation="2.2" result="b"/>
   <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -51,7 +70,7 @@ DEFS = f"""
   <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
 </filter>
 <linearGradient id="neon" x1="0" x2="1" y1="0" y2="0">
-  <stop offset="0" stop-color="{CYAN}"/><stop offset="1" stop-color="{MAGENTA}"/>
+  <stop offset="0" stop-color="{a}"/><stop offset="1" stop-color="{b}"/>
 </linearGradient>
 <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
   <path d="M20 0H0V20" fill="none" stroke="{GRID}" stroke-width=".6"/>
@@ -82,7 +101,7 @@ def document(h: int, body: str, title: str, css: str = "") -> str:
     """A full console 'screen': dark rounded frame, grid backdrop, sweeping scanline."""
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{h}" viewBox="0 0 {W} {h}" role="img" aria-label="{esc(title)}">
 <title>{esc(title)}</title>
-<defs>{DEFS}</defs>
+<defs>{defs()}</defs>
 <style>{BASE_CSS}{css}</style>
 <rect x=".5" y=".5" width="{W - 1}" height="{h - 1}" rx="14" fill="{BG}" stroke="{EDGE}"/>
 <rect x="1" y="1" width="{W - 2}" height="{h - 2}" rx="14" fill="url(#grid)" opacity=".55"/>

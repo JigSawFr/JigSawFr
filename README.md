@@ -8,10 +8,10 @@
 </div>
 
 ### 🏠 Smart home · Maison connectée
-<sub>My last 12 months of GitHub activity, wired into a house: every room is a month, every floor tile a day, devices light up when I ship.<br>
-🇫🇷 Mes 12 derniers mois d'activité GitHub câblés dans une maison : chaque pièce est un mois, chaque dalle un jour.</sub>
+<sub>My last year on GitHub, built in 3D: every pillar in the garden is a day, every lit window a month. The house dresses up for the season (Halloween, Christmas, winter…).<br>
+🇫🇷 Ma dernière année sur GitHub en 3D : chaque pilier du jardin est un jour, chaque fenêtre un mois. La maison se met aux couleurs de la saison.</sub>
 
-<img src="assets/house.svg" width="100%" alt="Smart home floorplan made from contributions">
+<img src="assets/house.svg" width="100%" alt="Isometric smart home made from contributions">
 
 ### 🛡️ Security Operations Center
 <img src="assets/soc.svg" width="100%" alt="SOC dashboard: radar, streaks, alerts, 30-day activity">
