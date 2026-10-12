@@ -14,7 +14,7 @@ import datetime as dt
 import math
 import random
 
-from .. import environment
+from .. import ctf, environment
 from ..svg import EDGE, RED, THEME, document, esc, shade, text
 from . import props
 from .iso import P, box, halo_defs, line, poly, pts, quad_x, quad_y
@@ -58,6 +58,10 @@ CSS = """
 .flash { opacity: 0; animation: flash 7s linear infinite; }
 @keyframes flash { 0%, 100% { opacity: 0; } 61% { opacity: 0; } 62% { opacity: .55; } 63% { opacity: 0; } 65% { opacity: .35; } 66% { opacity: 0; } }
 .alarm { animation: alarm 1.2s ease-in-out infinite; }
+.peck { animation: peck 4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes peck { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(18deg); } 90% { transform: rotate(0); } 93% { transform: rotate(14deg); } }
+.ups { animation: ups 3s ease-in-out infinite; }
+@keyframes ups { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 @keyframes alarm { 0%,100% { opacity: .05; } 50% { opacity: .5; } }
 """
 
@@ -183,7 +187,9 @@ def pick_particles(env: dict) -> list[str]:
 
 # ------------------------------------------------------------------ the house
 
-def house(months_power: list[float], hot: int, live: int, L: float, intrusion: bool) -> str:
+def house(months_power: list[float], hot: int, live: int, L: float, intrusion: bool, outage: bool,
+          ticker_msg: str, inverter_lines: tuple[str, str, str]) -> str:
+    """`outage`: no contribution for a week → mains lost, the house runs on its UPS (lights off)."""
     neon_a, neon_b = THEME["neon"]
     edge = f'stroke="{neon_a}" stroke-opacity=".75" stroke-width="1.2" stroke-linejoin="round"'
     deco = THEME["deco"]
@@ -193,7 +199,8 @@ def house(months_power: list[float], hot: int, live: int, L: float, intrusion: b
     # walls
     out.append(quad_y(HX0, HX1, HY1, 0, WALL, "#111b2b", edge))
     out.append(quad_x(HX1, HY0, HY1, 0, WALL, "#0b1320", edge))
-    out.append(f'<path d="M{pts([P(HX0, HY1, 3.9), P(HX1, HY1, 3.9)])}" stroke="{neon_a}" stroke-opacity=".3" stroke-dasharray="3 3"/>')
+    if outage:
+        L = 0.0
 
     # 12 month windows on the front wall (top floor = older months)
     win = THEME["window"]
@@ -202,7 +209,7 @@ def house(months_power: list[float], hot: int, live: int, L: float, intrusion: b
         z0 = 4.9 if row == 0 else 1.2
         x0 = HX0 + .8 + col * 2.15
         out.append(quad_y(x0 - .1, x0 + 1.45, HY1, z0 - .15, z0, "#2b3a52"))   # sill
-        if p <= 0:
+        if p <= 0 or outage:
             out.append(quad_y(x0, x0 + 1.35, HY1, z0, z0 + 1.6, "#0a111c", f'stroke="{EDGE}"'))
             continue
         cls = "flick" if i == hot else ("beam" if i == live else "")
@@ -228,13 +235,16 @@ def house(months_power: list[float], hot: int, live: int, L: float, intrusion: b
     for j in range(3):
         for k in range(3):
             lx, ly = P(HX1, -11.0 + k * .7, 5.2 + j * .55)
-            c = "#39ff88" if (j + k) % 3 else RED
+            c = "#ffb547" if outage else ("#39ff88" if (j + k) % 3 else RED)
             out.append(f'<circle class="blink" style="animation-delay:{(j * 3 + k) * .23:.2f}s" cx="{lx:.1f}" cy="{ly:.1f}" r="1.1" fill="{c}"/>')
 
     # gable + round attic window
     out.append(poly([P(HX1, HY0, WALL), P(HX1, HY1, WALL), P(HX1, RIDGE_Y, RIDGE_Z - .35)], "#0b1320", edge))
     attic = [P(HX1, RIDGE_Y + .8 * math.cos(t), 8.75 + .8 * math.sin(t)) for t in [k * math.pi / 8 for k in range(16)]]
-    out.append(poly(attic, win, 'fill-opacity=".8" filter="url(#glow)" class="beam"'))
+    out.append(poly(attic, "#0a111c" if outage else win, 'fill-opacity=".8" filter="url(#glow)" class="beam"'))
+    # solar inverter (or UPS) screen on the side wall, LED ticker with my last commit on the front
+    out.append(props.inverter(HX1, -7.3, -11.3, 2.75, 1.45, *inverter_lines))
+    out.append(props.ticker(HX0 + .3, HX1 - .3, HY1, 4.5, 1.45, ticker_msg, "#ffb547" if not outage else "#5c6f88"))
 
     # roof: back plane, chimney + smoke, front plane
     back = [P(HX0 - .5, HY0 - .5, EAVE_Z), P(HX1 + .5, HY0 - .5, EAVE_Z), P(HX1 + .5, RIDGE_Y, RIDGE_Z), P(HX0 - .5, RIDGE_Y, RIDGE_Z)]
@@ -254,7 +264,8 @@ def house(months_power: list[float], hot: int, live: int, L: float, intrusion: b
             x0, t0 = HX0 + 1 + c * 2.45, .14 + r * .4
             quad = [roof_pt(x0, t0), roof_pt(x0 + 2.2, t0), roof_pt(x0 + 2.2, t0 + .34), roof_pt(x0, t0 + .34)]
             out.append(poly(quad, "#0d2c52", f'stroke="{neon_a}" stroke-opacity=".55" stroke-width=".7"'))
-            out.append(poly(quad, neon_a, f'class="sweep" style="animation-delay:{1 + c * .25 + r * .1:.2f}s"'))
+            if not outage:
+                out.append(poly(quad, neon_a, f'class="sweep" style="animation-delay:{1 + c * .25 + r * .1:.2f}s"'))
     if snow:
         out.append(poly([roof_pt(HX0 - .5, 0), roof_pt(HX1 + .5, 0), roof_pt(HX1 + .5, .12), roof_pt(HX0 - .5, .12)], "#f4f8ff"))
         out.append(poly([roof_pt(HX0 - .5, .92), roof_pt(HX1 + .5, .92), roof_pt(HX1 + .5, 1), roof_pt(HX0 - .5, 1)], "#f4f8ff"))
@@ -284,7 +295,7 @@ def house(months_power: list[float], hot: int, live: int, L: float, intrusion: b
                    f'<rect x="{fx + 12:.1f}" y="{fy:.1f}" width="6" height="11" fill="#ef4444"/></g>')
 
     # light string on the eaves and gable
-    if THEME["garland"]:
+    if THEME["garland"] and not outage:
         cols = THEME["garland"]
         dots = [roof_pt(HX0 - .5 + i * .75, 1) for i in range(21)]
         dots += [P(HX1 + .5, RIDGE_Y + (HY1 + .5 - RIDGE_Y) * t, RIDGE_Z - (RIDGE_Z - EAVE_Z) * t) for t in (i / 8 for i in range(9))]
@@ -385,6 +396,43 @@ def lot_front(rng: random.Random, L: float, st: dict, data: dict) -> str:
     return "".join(out)
 
 
+# ------------------------------------------------------------------ live captions
+
+def ticker_text(st: dict) -> str:
+    c = st["last_commit"]
+    if not c:
+        return "▶ no public commit yet · stay tuned · restez branchés"
+    age = (st["today"] - dt.date.fromisoformat(c["date"][:10])).days
+    when = "today" if age <= 0 else f"{age}d ago"
+    return f"▶ last commit · {c['repo']}: {c['headline']} · {when}"
+
+
+def inverter_lines(st: dict, env: dict) -> tuple[str, str, str]:
+    """Solar production = today's contributions (1 event = 1 kWh); the battery takes over at night."""
+    if st["outage"]:
+        pct = max(5, 100 - 7 * (st["idle_days"] - 7))
+        return f"UPS {pct}%", "on battery", "#ffb547"
+    kwh = st["today_count"]
+    if env["phase"] == "night":
+        return f"🔋 {kwh} kWh", "stored today", "#39ff88"
+    return f"☀ {kwh} kWh", "solar today", "#ffd166"
+
+
+def status_line(st: dict) -> tuple[str, str, float]:
+    if st["intrusions"]:
+        hit = st["intrusions"][0]
+        more = f" (+{len(st['intrusions']) - 1})" if len(st["intrusions"]) > 1 else ""
+        return f"⚠ INTRUSION: issue {hit['repo']}#{hit['number']}{more}", f'class="pulse" style="fill:{RED}" font-weight="700"', 11
+    if st["outage"]:
+        return (f"⚡ POWER OUTAGE: idle {st['idle_days']}d, UPS on battery", 'class="ups" style="fill:#ffb547" font-weight="700"', 11)
+    if st["birthday"]:
+        return "🎂 HAPPY BIRTHDAY · JOYEUX ANNIVERSAIRE !", f'class="pulse" style="fill:{THEME["neon"][1]}" font-weight="700"', 11
+    if st["milestone"]:
+        m = st["milestone"]
+        return f"🎉 {m['repo']} just passed {m['stars']}★", f'class="pulse" style="fill:#ffd166" font-weight="700"', 11
+    return "perimeter secure · robot mower on duty", "", 10.5
+
+
 # ------------------------------------------------------------------ render
 
 def render(cfg: dict, data: dict, st: dict) -> str:
@@ -399,6 +447,9 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     offset = (first.weekday() + 1) % 7    # GitHub weeks start on Sunday
     deco = THEME["deco"]
     intrusion = bool(st["intrusions"])
+    outage = st["outage"]
+    Lh = 0.0 if outage else L               # lights of my own property
+    party = st["birthday"] or st["milestone"]
 
     totals = [sum(d["count"] for d in ds) for _, ds in st["months"]]
     top = max(totals or [1]) or 1
@@ -406,8 +457,8 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     hot = max(range(len(totals)), key=totals.__getitem__) if any(totals) else -1
 
     body = [halo_defs([props.WARM, props.COLD, RED]), sky(env, rng), clouds(env, rng)]
-    if THEME["fireworks"] and env["phase"] != "day":
-        body.append(props.fireworks(THEME["fireworks"]))
+    if (THEME["fireworks"] or party) and env["phase"] != "day":
+        body.append(props.fireworks(THEME["fireworks"] or ["#ffd166", "#ff2fd0", "#00e5ff", "#39ff88"]))
     if "bats" in deco:
         body.append(props.bats())
     if "sleigh" in deco and env["phase"] in ("night", "dusk"):
@@ -425,13 +476,18 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     edge = f'stroke="{a}" stroke-opacity=".6" stroke-width="1"'
     gx0, gx1, _, gy1, _ = props.GARAGE
     body.append(poly([P(gx0 + .8, gy1, .01), P(gx1 - .5, gy1, .01), P(gx1 - .5, -1.0, .01), P(gx0 + .8, -1.0, .01)], "#1a2230"))
-    body.append(props.garage(data.get("open_prs", 0), bool(st["release"]), L, edge))
+    body.append(props.garage(data.get("open_prs", 0), bool(st["release"]), Lh, edge))
     body.append(props.bush(23.6, -6.5, rng, lights, snowy, r=6))
-    if THEME["sign"]:
+    sign = "HBD!" if st["birthday"] else THEME["sign"]
+    if sign and not outage:
         year = st["today"].year + (st["today"].month == 12)
-        body.append(props.neon_sign(THEME["sign"].format(year=year), b))
-    body.append(house(power, hot, len(totals) - 1, L, intrusion))
-    body.append(lot_front(rng, L, st, data))
+        body.append(props.neon_sign(sign.format(year=year), b))
+    body.append(house(power, hot, len(totals) - 1, L, intrusion, outage, ticker_text(st), inverter_lines(st, env)))
+    for i, x in enumerate([31.2, 35.4, 36.8, 38.2, 39.6, 42.4, 43.6][:min(7, st["stars_week"])]):
+        body.append(props.bird(*P(x, RIDGE_Y, RIDGE_Z), b if i % 2 else a, i * .7))
+    body.append(lot_front(rng, Lh, st, data))
+    if st["birthday"]:
+        body.append(props.cake(27.3, -1.9) + props.balloons(31.1, -2.1, 2.2))
     if "ghost" in deco:
         body.append(props.ghost(560, 70))
     if "hologram" in deco:
@@ -462,9 +518,16 @@ def render(cfg: dict, data: dict, st: dict) -> str:
                 f'<circle class="wave" cx="{bx:.1f}" cy="{by:.1f}" r="7" fill="none" stroke="{b}"/>')
     body.append(text(round(bx), round(by - 52), "today", "", 9, "middle", f'style="fill:{b}"'))
     body.append(mower())
+
+    # the street and my followers' houses across it
+    body.append(props.road(0, 53, 8.3, 9.9))
+    body.append(props.road_car(-1, 54, 9.5, L))
+    nrng = random.Random(3)
+    for i, n in enumerate(data.get("neighbours", [])[:6]):
+        body.append(props.neighbour(22.5 + i * 4, 10.8, n["total"], n["login"], L, nrng))
     if "butterflies" in deco:
         body.append(props.butterflies())
-    body.append(yard(rng, L))
+    body.append(yard(rng, Lh))
     body.append(props.drone())
 
     # captions
@@ -473,18 +536,16 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     body.append(text(24, 72, "jardin : 1 pilier = 1 jour · fenêtres : 1 = 1 mois", "dim", 10.5))
     body.append(text(24, 94, f"{THEME['icon']} {THEME['label']} MODE", "b", 11, extra=f'style="fill:{b}"'))
     rel, prs = st["release"], data.get("open_prs", 0)
+    garage = f"garage open ({prs} PRs)" if prs else "garage closed"
+    drive = f"car: {rel['tag']} {rel['repo']}" if rel else "no release this week"
+    birds = f" · {st['stars_week']} new ★ = {min(7, st['stars_week'])} birds" if st["stars_week"] else ""
     info = [
         (f"{data['total']} events · 365 days · streak {st['current_streak']}d", f'style="fill:{a}" font-weight="700"', 11),
         (environment.describe(env)[0] + (f" · avg of {env['cities']} cities" if env["cities"] else ""), "", 10.5),
-        (f"garage open: {prs} PRs in review" if prs else "garage closed: no open PR", "", 10.5),
-        (f"driveway: {rel['tag']} of {rel['repo']} just shipped" if rel else "driveway empty: no release this week", "", 10.5),
+        (f"{garage} · {drive}", "", 10.5),
+        (f"{inverter_lines(st, env)[0]} {inverter_lines(st, env)[1]}{birds}", "", 10.5),
+        status_line(st),
     ]
-    if intrusion:
-        hit = st["intrusions"][0]
-        more = f" (+{len(st['intrusions']) - 1})" if len(st["intrusions"]) > 1 else ""
-        info.append((f"⚠ INTRUSION: issue {hit['repo']}#{hit['number']}{more}", f'class="pulse" style="fill:{RED}" font-weight="700"', 11))
-    else:
-        info.append(("perimeter secure · robot mower on duty", "", 10.5))
     for i, (msg, extra, size) in enumerate(info):
         body.append(text(24, 404 + i * 16, msg, "" if extra else "dim", size, extra=extra))
     lx, ly = 690, 494
@@ -493,8 +554,12 @@ def render(cfg: dict, data: dict, st: dict) -> str:
         body.append(f'<rect x="{lx + i * 15}" y="{ly - 9}" width="11" height="11" rx="2" fill="{c}"/>')
     body.append(text(lx + 5 * 15 + 3, ly, "more", "dim", 9.5))
 
-    for kind in pick_particles(env):
+    kinds = pick_particles(env)
+    if st["birthday"] and "confetti" not in kinds:
+        kinds.append("confetti")
+    for kind in kinds:
         body.append(precipitation(kind, rng))
+    body.append(ctf.comment())
     if intrusion:
         body.append(f'<rect class="alarm" x="3" y="3" width="834" height="{H - 6}" rx="13" fill="none" stroke="{RED}" stroke-width="6"/>')
     return document(H, "\n".join(body), f"Isometric smart home built from GitHub contributions ({THEME['label']})",

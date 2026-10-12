@@ -6,6 +6,7 @@ import datetime as dt
 import math
 import zlib
 
+from .. import ctf
 from ..svg import AMBER, CYAN, DIM, EDGE, GREEN, MAGENTA, PANEL, RED, clip, document, esc, text, titlebar
 
 CSS = """
@@ -99,6 +100,8 @@ def render(cfg: dict, data: dict, st: dict) -> str:
         ("OK", GREEN, "honeypots quiet · capteurs au vert"),
         ("WARN", AMBER, "café.service: niveau bas"),
     ]
+    if st["outage"]:
+        alerts = [("WARN", AMBER, f"mains lost · UPS {st['idle_days']}d")] + alerts[:-1]
     if st["intrusions"]:
         hit = st["intrusions"][0]
         alerts = [("CRIT", RED, f"INTRUSION {hit['repo']}#{hit['number']}")] + alerts[:-1]
@@ -127,4 +130,5 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     body.append(f'<path d="M{sx} {sy + sh}H{sx + sw}" stroke="{EDGE}"/>')
     lx, ly = coords[-1]
     body.append(f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="4" fill="{MAGENTA}" class="pulse" filter="url(#glow)"/>')
+    body.append(ctf.invisible())
     return document(sy + sh + 20, "\n".join(body), "SOC dashboard built from GitHub activity", CSS)

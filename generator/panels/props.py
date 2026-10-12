@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 import random
 
-from ..svg import GREEN, RED, THEME, shade, text
+from ..svg import GREEN, RED, THEME, esc, shade, text
 from .iso import P, box, glow, line, poly, quad_y
 
 WARM = "#ffd27a"
@@ -449,4 +449,114 @@ def bunting(a, b, colors, sag=6.0, n=12) -> str:
         x = (1 - t) ** 2 * ax + 2 * (1 - t) * t * mx + t * t * bx
         y = (1 - t) ** 2 * ay + 2 * (1 - t) * t * my + t * t * by
         out.append(f'<path class="bob" style="animation-duration:{2 + i % 3}s" d="M{x - 3:.1f} {y:.1f}h6l-3 6z" fill="{colors[i % len(colors)]}"/>')
+    return "".join(out)
+
+
+# ------------------------------------------------------------------ live-data props
+
+def ticker(x0, x1, y, z_top, height, message: str, color: str) -> str:
+    """Scrolling LED band mounted on a y = const wall (last commit message)."""
+    sx, sy = P(x0, y, z_top)
+    w, h = (x1 - x0) * 12, height * 12
+    tw = len(message) * 5.7
+    dur = (w + tw) / 28
+    return (f'<g transform="matrix(.866 .5 0 1 {sx:.1f} {sy:.1f})">'
+            f'<defs><clipPath id="tick"><rect width="{w:.0f}" height="{h:.0f}"/></clipPath></defs>'
+            f'<rect width="{w:.0f}" height="{h:.0f}" rx="2" fill="#03060b" stroke="{THEME["neon"][0]}" stroke-opacity=".6"/>'
+            f'<g clip-path="url(#tick)"><text x="0" y="{h * .72:.1f}" font-size="9.5" style="fill:{color};'
+            f'animation:ticker {dur:.1f}s linear infinite" filter="url(#glow)">{esc(message)}</text></g>'
+            f'<style>@keyframes ticker {{ from {{ transform: translateX({w:.0f}px); }} to {{ transform: translateX(-{tw:.0f}px); }} }}</style>'
+            f"</g>")
+
+
+def inverter(x, y_left, y_right, z_top, height, line1: str, line2: str, color: str) -> str:
+    """Small screen on an x = const wall (solar inverter / UPS)."""
+    sx, sy = P(x, y_left, z_top)
+    w, h = (y_left - y_right) * 12, height * 12
+    return (f'<g transform="matrix(.866 -.5 0 1 {sx:.1f} {sy:.1f})">'
+            f'<rect width="{w:.0f}" height="{h:.0f}" rx="2" fill="#03060b" stroke="{color}" stroke-opacity=".7"/>'
+            f'<text x="{w / 2:.0f}" y="{h * .5:.1f}" font-size="7.5" font-weight="700" text-anchor="middle" '
+            f'style="fill:{color}" filter="url(#glow)">{esc(line1)}</text>'
+            f'<text x="{w / 2:.0f}" y="{h * .86:.1f}" font-size="5" text-anchor="middle" style="fill:#8aa0b8">{esc(line2)}</text></g>')
+
+
+def bird(sx, sy, color, delay) -> str:
+    return (f'<g transform="translate({sx:.1f},{sy:.1f})"><g class="peck" style="animation-delay:{delay:.1f}s">'
+            f'<path d="M-1 0v3M1 0v3" stroke="#ffb547" stroke-width=".7"/>'
+            f'<ellipse cx="0" cy="-2.5" rx="4" ry="2.8" fill="{color}"/>'
+            f'<circle cx="3.2" cy="-5" r="2" fill="{color}"/><path d="M5 -5.2l2.4 .6-2.4 .6z" fill="#ffb547"/>'
+            f'<circle cx="3.6" cy="-5.4" r=".5" fill="#111"/><path d="M-4 -3l-3 -1.5" stroke="{color}" stroke-width="1.6"/></g></g>')
+
+
+def balloons(x, y, z) -> str:
+    sx, sy = P(x, y, z)
+    cols = ["#ff4d6d", "#ffd166", "#00e5ff", "#ff2fd0", "#39ff88"]
+    out = []
+    for i, (dx, dy) in enumerate([(-12, -34), (-4, -42), (6, -38), (14, -30), (0, -28)]):
+        out.append(f'<g class="bob" style="animation-delay:{i * .4:.1f}s">'
+                   f'<path d="M{sx:.1f} {sy:.1f}Q{sx + dx / 2:.1f} {sy + dy / 2 + 6:.1f} {sx + dx:.1f} {sy + dy + 6:.1f}" '
+                   f'fill="none" stroke="#c9d6e5" stroke-width=".5"/>'
+                   f'<ellipse cx="{sx + dx:.1f}" cy="{sy + dy:.1f}" rx="5" ry="6.2" fill="{cols[i]}"/>'
+                   f'<ellipse cx="{sx + dx - 1.6:.1f}" cy="{sy + dy - 2:.1f}" rx="1.2" ry="1.8" fill="#fff" opacity=".5"/></g>')
+    return "".join(out)
+
+
+def cake(x, y) -> str:
+    sx, sy = P(x, y, .9)
+    out = [box(x - .6, y - .6, 0, 1.2, 1.2, .9, "#c9a27a"),
+           f'<ellipse cx="{sx:.1f}" cy="{sy:.1f}" rx="9" ry="4.5" fill="#ff8fd8"/>',
+           f'<rect x="{sx - 9:.1f}" y="{sy - 8:.1f}" width="18" height="8" fill="#ff8fd8"/>',
+           f'<ellipse cx="{sx:.1f}" cy="{sy - 8:.1f}" rx="9" ry="4.5" fill="#ffd1ec"/>']
+    for k in range(4):
+        cx = sx - 5 + k * 3.4
+        out.append(f'<rect x="{cx - .6:.1f}" y="{sy - 14:.1f}" width="1.2" height="5" fill="#7af6ff"/>'
+                   f'<ellipse class="flick" style="animation-delay:{k * .3:.1f}s" cx="{cx:.1f}" cy="{sy - 15.5:.1f}" '
+                   f'rx="1" ry="1.8" fill="#ffd166" filter="url(#glow)"/>')
+    return "".join(out)
+
+
+def road(x0, x1, y0, y1) -> str:
+    out = [poly([P(x0, y0, .01), P(x1, y0, .01), P(x1, y1, .01), P(x0, y1, .01)], "#141a24"),
+           line(P(x0, y0, .02), P(x1, y0, .02), "#2b3a52", 1), line(P(x0, y1, .02), P(x1, y1, .02), "#2b3a52", 1)]
+    k, ym = x0 + .5, (y0 + y1) / 2
+    while k < x1 - 1:
+        out.append(line(P(k, ym, .02), P(k + 1, ym, .02), "#ffd166", 1, 'stroke-opacity=".5"'))
+        k += 2
+    return "".join(out)
+
+
+def road_car(x0, x1, y, L) -> str:
+    ox, oy = P(0, 0)
+    col = THEME["neon"][0]
+    body = (box(-1.4, -.45, .2, 2.8, .9, .5, shade(col, .6)) + box(-.8, -.4, .7, 1.4, .8, .35, "#1a2438"))
+    lights = f'<circle cx="{CXH:.1f}" cy="{CYH:.1f}" r="1.3" fill="{COLD}"/>' + glow(CXH, CYH, 10, COLD, .3 + .7 * L)
+    a, b = P(x0, y), P(x1, y)
+    return (f'<g><g transform="translate({-ox:.1f},{-oy:.1f})">{body}</g>{lights}'
+            f'<animateMotion dur="16s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.85;1" calcMode="linear" '
+            f'path="M{a[0]:.1f} {a[1]:.1f}L{b[0]:.1f} {b[1]:.1f}"/></g>')
+
+
+CXH, CYH = P(1.4, 0, .45)[0] - P(0, 0)[0], P(1.4, 0, .45)[1] - P(0, 0)[1]
+
+
+def neighbour(x, y, total: int, login: str, L, rng: random.Random) -> str:
+    """A small follower house: its windows glow with that person's yearly activity."""
+    w, d, h = 2.8, 2.2, 1.7
+    wall = rng.choice(["#18233a", "#1d2a2a", "#2a1f33", "#2b2620"])
+    roof = rng.choice(["#3a7bd5", "#ff4d6d", "#39b54a", "#a64dff", "#e07b39"])
+    power = min(1.0, total / 1500)
+    out = [box(x, y, 0, w, d, h, wall, f'stroke="{shade(roof, .8)}" stroke-opacity=".5" stroke-width=".5"')]
+    ry, rz = y + d / 2, h + 1.0
+    out.append(poly([P(x - .1, y - .1, h), P(x + w + .1, y - .1, h), P(x + w + .1, ry, rz), P(x - .1, ry, rz)], shade(roof, .55)))
+    out.append(poly([P(x + w, y, h), P(x + w, y + d, h), P(x + w, ry, rz - .05)], shade(wall, .6)))
+    out.append(poly([P(x - .1, ry, rz), P(x + w + .1, ry, rz), P(x + w + .1, y + d + .1, h), P(x - .1, y + d + .1, h)], roof))
+    win = THEME["window"]
+    for k in range(2):
+        wx = x + .35 + k * 1.5
+        op = (.15 + .85 * power) * (.35 + .65 * L) if total else .05
+        out.append(quad_y(wx, wx + .7, y + d, .7, 1.3, win if total else "#0a111c",
+                          f'fill-opacity="{op:.2f}"' + (' filter="url(#glow)"' if total and L > .3 else "")))
+    out.append(quad_y(x + 1.15, x + 1.6, y + d, 0, .9, "#0b1320"))
+    lx, ly = P(x + w / 2, y + d, 0)
+    out.append(text(round(lx), round(ly + 12), "@" + login[:14], "dim", 7.5, "middle"))
     return "".join(out)

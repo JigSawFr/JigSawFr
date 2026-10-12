@@ -7,6 +7,7 @@ tagline_en = "IT · Home automation · Security — I automate my house, then I 
 tagline_fr = "IT · Domotique · Sécurité — j'automatise ma maison, puis je la sécurise."
 location = "France"
 hostname = "homelab.local"
+birthday = "01-06"   # MM-DD: cake, balloons and confetti on the house that day
 
 # Shown as Home Assistant style "integrations" (4 per row, the grid grows as needed).
 integrations = [

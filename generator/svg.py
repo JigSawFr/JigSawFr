@@ -97,10 +97,10 @@ def text(x, y, s, cls="", size=12, anchor="start", extra="") -> str:
     return f'<text x="{x}" y="{y}" font-size="{size}"{c}{a} xml:space="preserve" {extra}>{esc(s)}</text>'
 
 
-def document(h: int, body: str, title: str, css: str = "") -> str:
+def document(h: int, body: str, title: str, css: str = "", head: str = "") -> str:
     """A full console 'screen': dark rounded frame, grid backdrop, sweeping scanline."""
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{h}" viewBox="0 0 {W} {h}" role="img" aria-label="{esc(title)}">
-<title>{esc(title)}</title>
+<title>{esc(title)}</title>{head}
 <defs>{defs()}</defs>
 <style>{BASE_CSS}{css}</style>
 <rect x=".5" y=".5" width="{W - 1}" height="{h - 1}" rx="14" fill="{BG}" stroke="{EDGE}"/>

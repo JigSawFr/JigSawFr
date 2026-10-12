@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .. import environment
+from .. import ctf, environment
 from ..svg import AMBER, CYAN, DIM, GREEN, MAGENTA, RED, THEME, document, esc, text, titlebar
 
 BANNER = [
@@ -85,6 +85,11 @@ def render(cfg: dict, data: dict, st: dict) -> str:
         ("OK", f"Started {THEME['boot']} {THEME['icon']}"),
         ("OK", f"Started weather.service — {environment.describe(st['env'])[1]}"),
     ]
+    if st["birthday"]:
+        log.append(("OK", "Started birthday.target — joyeux anniversaire ! 🎂"))
+    if st["outage"]:
+        log.append(("WARN", f"ups.service — mains lost {st['idle_days']}d ago, running on battery"))
+    log.append(("OK", "Started honeypot.service — 1 flag hidden in these SVGs 🏁"))
     if st["intrusions"]:
         hit = st["intrusions"][0]
         log.append(("FAIL", f"perimeter.service — intrusion: new issue on {hit['repo']}#{hit['number']}"))
@@ -107,4 +112,4 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     body.append(f'<g class="fade" style="animation-delay:{t:.2f}s">{text(30, y + 20, msg, "cyan b", 12.5)}</g>')
     cur_x = 30 + len(msg) * 7.55 + 6
     body.append(f'<rect class="blink" x="{cur_x:.0f}" y="{y + 9}" width="8" height="14" fill="{CYAN}"/>')
-    return document(y + 42, "\n".join(body), f"{cfg['display_name']} — homelab boot console")
+    return document(y + 42, "\n".join(body), f"{cfg['display_name']} — homelab boot console", head=ctf.desc())

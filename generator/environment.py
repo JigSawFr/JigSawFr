@@ -115,5 +115,7 @@ def describe(env: dict) -> tuple[str, str]:
     if not env["weather"]:
         return f"{p_icon} {p_en}", f"{p_icon} {p_fr}"
     w_en, w_fr, w_icon = LABELS[env["weather"]]
+    if env["weather"] == "clear" and env["phase"] != "day":
+        w_icon = "🌙"
     t = f"{env['temp']:.0f}°C"
     return f"{w_icon} France {t} · {w_en} · {p_en}", f"{w_icon} France {t} · {w_fr} · {p_fr}"

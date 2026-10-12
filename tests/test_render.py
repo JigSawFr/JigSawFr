@@ -17,6 +17,7 @@ class RenderTest(unittest.TestCase):
         self.data = data_mod.sample(CFG["login"], today=dt.date(2026, 10, 12))
         self.st = data_mod.stats(self.data)
         self.st["env"] = environment.load(offline=True, phase="night", weather="rain")
+        self.st.update(birthday=False, outage=False)
 
     def test_panels_are_valid_static_svg(self):
         for name, mod in PANELS.items():
@@ -41,6 +42,30 @@ class RenderTest(unittest.TestCase):
                 self.st["env"] = {**self.st["env"], "phase": phase, "weather": weather}
                 with self.subTest(phase=phase, weather=weather):
                     xml.dom.minidom.parseString(PANELS["house"].render(CFG, self.data, self.st).encode())
+
+    def test_special_modes_render(self):
+        for mode in ({"birthday": True}, {"outage": True, "idle_days": 12},
+                     {"milestone": {"repo": "r", "stars": 100}}, {"last_commit": None, "stars_week": 0}):
+            st = {**self.st, **mode}
+            for name, mod in PANELS.items():
+                with self.subTest(mode=mode, panel=name):
+                    xml.dom.minidom.parseString(mod.render(CFG, self.data, st).encode())
+
+    def test_ctf_fragments_are_all_hidden_in_the_svgs(self):
+        import base64, re
+        from generator import ctf
+        out = "".join(mod.render(CFG, self.data, self.st) for mod in PANELS.values())
+        b64 = re.search(r"maintenance token: (\S+)<", out).group(1)
+        decoded = base64.b64decode(b64).decode()
+        for frag in ctf.FRAGMENTS:
+            self.assertTrue(frag in out or frag in decoded, frag)
+
+    def test_star_milestone(self):
+        today = dt.date(2026, 10, 12)
+        repo = {"name": "r", "stars": 101, "recent_stars": ["2026-10-11T00:00:00Z", "2026-10-10T00:00:00Z"]}
+        self.assertEqual(data_mod.star_milestone({"repos": [repo]}, today), {"repo": "r", "stars": 100})
+        repo["stars"] = 105
+        self.assertIsNone(data_mod.star_milestone({"repos": [repo]}, today))
 
     def test_weather_codes(self):
         self.assertEqual(environment.weather_kind(0), "clear")

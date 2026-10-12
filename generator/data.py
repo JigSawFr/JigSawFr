@@ -17,7 +17,10 @@ query($login: String!) {
     login
     name
     createdAt
-    followers { totalCount }
+    followers(first: 6) {
+      totalCount
+      nodes { login contributionsCollection { contributionCalendar { totalContributions } } }
+    }
     pullRequests(states: OPEN) { totalCount }
     contributionsCollection {
       totalCommitContributions
@@ -48,6 +51,14 @@ query($login: String!) {
         }
         issues(states: OPEN, first: 3, orderBy: {field: CREATED_AT, direction: DESC}) {
           nodes { number createdAt author { login } }
+        }
+        stargazers(last: 10, orderBy: {field: STARRED_AT, direction: ASC}) { edges { starredAt } }
+        defaultBranchRef {
+          target {
+            ... on Commit {
+              history(first: 5) { nodes { messageHeadline committedDate author { user { login } } } }
+            }
+          }
         }
       }
     }
@@ -96,6 +107,8 @@ def normalise(user: dict) -> dict:
             "issues": [{"number": i["number"], "created_at": i["createdAt"],
                         "author": (i.get("author") or {}).get("login") or "ghost"}
                        for i in r["issues"]["nodes"]],
+            "recent_stars": [e["starredAt"] for e in r["stargazers"]["edges"]],
+            "last_commit": _my_commit(r, user["login"]),
         })
         for e in r["languages"]["edges"]:
             langs[e["node"]["name"]] = langs.get(e["node"]["name"], 0) + e["size"]
@@ -104,6 +117,9 @@ def normalise(user: dict) -> dict:
         "name": user.get("name") or user["login"],
         "created_at": user["createdAt"],
         "followers": user["followers"]["totalCount"],
+        "neighbours": [{"login": f["login"],
+                        "total": f["contributionsCollection"]["contributionCalendar"]["totalContributions"]}
+                       for f in user["followers"]["nodes"]],
         "open_prs": user["pullRequests"]["totalCount"],
         "days": sorted(days, key=lambda d: d["date"]),
         "total": cc["contributionCalendar"]["totalContributions"],
@@ -115,6 +131,14 @@ def normalise(user: dict) -> dict:
         "repos": repos,
         "languages": sorted(langs.items(), key=lambda kv: -kv[1]),
     }
+
+
+def _my_commit(repo: dict, login: str) -> dict | None:
+    target = (repo.get("defaultBranchRef") or {}).get("target") or {}
+    for c in (target.get("history") or {}).get("nodes", []):
+        if ((c.get("author") or {}).get("user") or {}).get("login", "").lower() == login.lower():
+            return {"headline": c["messageHeadline"], "date": c["committedDate"]}
+    return None
 
 
 def sample(login: str, today: dt.date | None = None) -> dict:
@@ -135,8 +159,10 @@ def sample(login: str, today: dt.date | None = None) -> dict:
     repos = [
         {"name": "playguard-ha", "description": "", "stars": 0, "language": "Python", "pushed_at": pushed(2)},
         {"name": "eurodns-mcp", "description": "Model Context Protocol server for the EuroDNS User API — domains, DNS zones, subscriptions and SSL.", "stars": 1, "language": "TypeScript", "pushed_at": pushed(25),
-         "release": {"tag": "v1.4.0", "published_at": pushed(2)}},
-        {"name": "lacale-prowlarr-indexer", "description": "La-Cale Prowlarr API Indexer", "stars": 140, "language": None, "pushed_at": pushed(60), "archived": True},
+         "release": {"tag": "v1.4.0", "published_at": pushed(2)},
+         "last_commit": {"headline": "feat(dns): bulk zone export with DNSSEC status", "date": pushed(1)}},
+        {"name": "lacale-prowlarr-indexer", "description": "La-Cale Prowlarr API Indexer", "stars": 140, "language": None, "pushed_at": pushed(60), "archived": True,
+         "recent_stars": [pushed(1), pushed(3), pushed(4)]},
         {"name": "aiometadata-docker", "description": "🐳 Automated Docker images for AIOMetadata - The Ultimate Stremio Metadata Addon | Multi-arch (amd64/arm64) | Auto-sync with upstream | Cosign signed", "stars": 3, "language": "Dockerfile", "pushed_at": pushed(57)},
         {"name": "asustor-runtipi", "description": "📦 Runtipi package for ASUSTOR NAS - Self-hosted app management platform with 200+ one-click apps, automatic HTTPS, and beautiful web UI. Supports x86-64 & ARM64 architectures.", "stars": 6, "language": "Python", "pushed_at": pushed(110)},
         {"name": "comet-docker", "description": "", "stars": 0, "language": "Dockerfile", "pushed_at": pushed(260)},
@@ -146,10 +172,14 @@ def sample(login: str, today: dt.date | None = None) -> dict:
         r.setdefault("archived", False)
         r.setdefault("release", None)
         r.setdefault("issues", [])
+        r.setdefault("recent_stars", [])
+        r.setdefault("last_commit", None)
         r["url"] = f"https://github.com/{login}/{r['name']}"
     total = sum(x["count"] for x in days)
     return {
         "login": login, "name": login, "created_at": "2013-06-01T00:00:00Z", "followers": 42, "open_prs": 2,
+        "neighbours": [{"login": n, "total": t} for n, t in
+                       [("octocat", 320), ("homelab-fan", 1210), ("zigbee-ninja", 45), ("selfhoster", 780), ("blue-team", 0), ("esp32-dev", 2400)]],
         "days": days, "total": total, "commits": int(total * 0.8), "prs": 64, "issues": 21, "reviews": 9,
         "repo_count": 9, "repos": repos,
         "languages": [("TypeScript", 820_000), ("Python", 410_000), ("JavaScript", 150_000),
@@ -202,7 +232,30 @@ def stats(data: dict, today: dt.date | None = None) -> dict:
         "stars": sum(r["stars"] for r in data["repos"]),
         "release": recent_release(data, today),
         "intrusions": intrusions(data, today),
+        "last_commit": last_commit(data),
+        "today_count": counts[-1] if counts else 0,
+        "idle_days": next((k for k, c in enumerate(reversed(counts)) if c), len(counts)),
+        "stars_week": sum(1 for r in data["repos"] for s in r.get("recent_stars", []) if _age(s, today) <= 7),
+        "milestone": star_milestone(data, today),
     }
+
+
+def last_commit(data: dict) -> dict | None:
+    found = [(r["last_commit"]["date"], r["name"], r["last_commit"]["headline"])
+             for r in data["repos"] if r.get("last_commit")]
+    if not found:
+        return None
+    date, repo, headline = max(found)
+    return {"repo": repo, "headline": headline, "date": date}
+
+
+def star_milestone(data: dict, today: dt.date, step: int = 100) -> dict | None:
+    """A repo that crossed a multiple of `step` stars during the last week → fireworks."""
+    for r in data["repos"]:
+        recent = sum(1 for s in r.get("recent_stars", []) if _age(s, today) <= 7)
+        if r["stars"] >= step and (r["stars"] - recent) // step < r["stars"] // step:
+            return {"repo": r["name"], "stars": r["stars"] // step * step}
+    return None
 
 
 def _age(ts: str, today: dt.date) -> int:
