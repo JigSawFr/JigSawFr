@@ -478,7 +478,7 @@ text { font-family: 'JetBrains Mono','Fira Code','SFMono-Regular',Menlo,Consolas
 <text x="24" y="94" font-size="11" class="b" xml:space="preserve" style="fill:#a64dff">🎃 HALLOWEEN MODE</text>
 <text x="24" y="404" font-size="11" xml:space="preserve" style="fill:#ff7b00" font-weight="700">1454 events · 365 days · streak 11d</text>
 <text x="24" y="420" font-size="10.5" class="dim" xml:space="preserve" >☁️ France 16°C · cloudy · night · avg of 10 cities</text>
-<text x="24" y="436" font-size="10.5" class="dim" xml:space="preserve" >garage open (8 PRs) · no release this week</text>
+<text x="24" y="436" font-size="10.5" class="dim" xml:space="preserve" >garage open (7 PRs) · no release this week</text>
 <text x="24" y="452" font-size="10.5" class="dim" xml:space="preserve" >🔋 2 kWh stored today</text>
 <text x="24" y="468" font-size="10.5" class="dim" xml:space="preserve" >perimeter secure · robot mower on duty</text>
 <text x="684" y="494" font-size="9.5" class="dim" text-anchor="end" xml:space="preserve" >less</text>
@@ -488,6 +488,6 @@ text { font-family: 'JetBrains Mono','Fira Code','SFMono-Regular',Menlo,Consolas
 <rect x="735" y="485" width="11" height="11" rx="2" fill="#ff7b00"/>
 <rect x="750" y="485" width="11" height="11" rx="2" fill="#ffc15e"/>
 <text x="768" y="494" font-size="9.5" class="dim" xml:space="preserve" >more</text>
-<!-- 🏁 1/3 · JIGSAW{1f_1t_h4s_ · the rest is hiding in soc.svg and boot.svg -->
+
 <rect class="scan" style="--h:512px" x="1" y="0" width="838" height="40" fill="url(#scanline)"/>
 </svg>

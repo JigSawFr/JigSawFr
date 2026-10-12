@@ -104,6 +104,6 @@ text { font-family: 'JetBrains Mono','Fira Code','SFMono-Regular',Menlo,Consolas
 <path class="draw" d="M300.0 325.1L318.1 325.1L336.1 326.0L354.2 319.5L372.3 326.0L390.3 326.0L408.4 326.0L426.5 326.0L444.6 326.0L462.6 316.7L480.7 326.0L498.8 326.0L516.8 326.0L534.9 319.5L553.0 326.0L571.0 319.5L589.1 326.0L607.2 326.0L625.2 326.0L643.3 322.3L661.4 311.1L679.4 256.0L697.5 299.9L715.6 300.8L733.7 298.9L751.7 301.7L769.8 298.9L787.9 287.7L805.9 309.2L824.0 324.1" fill="none" stroke="#00e5ff" stroke-width="2" filter="url(#glow)"/>
 <path d="M300 326H824" stroke="#1c2a3d"/>
 <circle cx="824.0" cy="324.1" r="4" fill="#ff2fd0" class="pulse" filter="url(#glow)"/>
-<text x="830" y="12" font-size="2" fill-opacity="0" aria-hidden="true">2/3 · 4n_1p_</text>
+
 <rect class="scan" style="--h:346px" x="1" y="0" width="838" height="40" fill="url(#scanline)"/>
 </svg>
