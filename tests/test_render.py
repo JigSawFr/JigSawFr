@@ -5,7 +5,7 @@ import xml.dom.minidom
 from pathlib import Path
 
 from generator import data as data_mod
-from generator import seasons, svg
+from generator import environment, seasons, svg
 from generator.main import PANELS, ROOT, featured_table
 
 CFG = tomllib.loads((ROOT / "generator" / "config.toml").read_text(encoding="utf-8"))
@@ -16,6 +16,7 @@ class RenderTest(unittest.TestCase):
         svg.use_theme(seasons.theme("cyber"))
         self.data = data_mod.sample(CFG["login"], today=dt.date(2026, 10, 12))
         self.st = data_mod.stats(self.data)
+        self.st["env"] = environment.load(offline=True, phase="night", weather="rain")
 
     def test_panels_are_valid_static_svg(self):
         for name, mod in PANELS.items():
@@ -32,6 +33,30 @@ class RenderTest(unittest.TestCase):
             for name, mod in PANELS.items():
                 with self.subTest(season=key, panel=name):
                     xml.dom.minidom.parseString(mod.render(CFG, self.data, self.st).encode())
+
+    def test_every_phase_and_weather_renders(self):
+        self.st["intrusions"] = [{"repo": "x", "number": 1, "created_at": "2026-10-12"}]
+        for phase in environment.PHASES:
+            for weather in environment.WEATHERS + (None,):
+                self.st["env"] = {**self.st["env"], "phase": phase, "weather": weather}
+                with self.subTest(phase=phase, weather=weather):
+                    xml.dom.minidom.parseString(PANELS["house"].render(CFG, self.data, self.st).encode())
+
+    def test_weather_codes(self):
+        self.assertEqual(environment.weather_kind(0), "clear")
+        self.assertEqual(environment.weather_kind(61), "rain")
+        self.assertEqual(environment.weather_kind(73), "snow")
+        self.assertEqual(environment.weather_kind(95), "storm")
+        self.assertEqual(environment.weather_kind(45), "fog")
+
+    def test_intrusions_ignore_me_and_bots(self):
+        today = dt.date(2026, 10, 12)
+        data = {"login": "Me", "repos": [{"name": "r", "issues": [
+            {"number": 1, "created_at": "2026-10-11T00:00:00Z", "author": "me"},
+            {"number": 2, "created_at": "2026-10-11T00:00:00Z", "author": "dependabot[bot]"},
+            {"number": 3, "created_at": "2026-09-01T00:00:00Z", "author": "stranger"},
+            {"number": 4, "created_at": "2026-10-10T00:00:00Z", "author": "stranger"}]}]}
+        self.assertEqual([h["number"] for h in data_mod.intrusions(data, today)], [4])
 
     def test_season_calendar(self):
         cases = {

@@ -71,7 +71,7 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     body.append(kpi(kx + 134, ky + 70, "PEAK DAY", st["best_day"]["count"], "evt", AMBER, 0.65))
 
     # ---- threat level (= activity of the last 7 days)
-    lvl = min(4, int(st["last7"] / 12)) if st["last7"] else 0
+    lvl = 4 if st["intrusions"] else (min(4, int(st["last7"] / 12)) if st["last7"] else 0)
     name, col = LEVELS[lvl]
     ty = 202
     body.append(text(kx, ty, "THREAT LEVEL", "dim", 9.5))
@@ -99,6 +99,9 @@ def render(cfg: dict, data: dict, st: dict) -> str:
         ("OK", GREEN, "honeypots quiet · capteurs au vert"),
         ("WARN", AMBER, "café.service: niveau bas"),
     ]
+    if st["intrusions"]:
+        hit = st["intrusions"][0]
+        alerts = [("CRIT", RED, f"INTRUSION {hit['repo']}#{hit['number']}")] + alerts[:-1]
     for i, (sev, c, msg) in enumerate(alerts):
         y = ay + 20 + i * 20
         stamp = (dt.datetime(2000, 1, 1, 8, 2) + dt.timedelta(minutes=37 * i + 3 * i * i)).strftime("%H:%M")

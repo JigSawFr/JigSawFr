@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from ..svg import AMBER, CYAN, DIM, GREEN, MAGENTA, THEME, document, esc, text, titlebar
+from .. import environment
+from ..svg import AMBER, CYAN, DIM, GREEN, MAGENTA, RED, THEME, document, esc, text, titlebar
 
 BANNER = [
     "     ██╗██╗ ██████╗ ███████╗ █████╗ ██╗    ██╗",
@@ -82,11 +83,16 @@ def render(cfg: dict, data: dict, st: dict) -> str:
         ("OK", f"Reached target contributions.target — {data['total']} events / 365 days"),
         ("OK", f"Started streak.timer — current {st['current_streak']}d, record {st['longest_streak']}d"),
         ("OK", f"Started {THEME['boot']} {THEME['icon']}"),
-        ("WARN", "coffee.service: level low — please refill ☕ / café à recharger"),
+        ("OK", f"Started weather.service — {environment.describe(st['env'])[1]}"),
     ]
+    if st["intrusions"]:
+        hit = st["intrusions"][0]
+        log.append(("FAIL", f"perimeter.service — intrusion: new issue on {hit['repo']}#{hit['number']}"))
+    else:
+        log.append(("WARN", "coffee.service: level low — please refill ☕ / café à recharger"))
     for i, (lvl, msg) in enumerate(log):
         y = y0 + 22 + i * 19
-        color = GREEN if lvl == "OK" else AMBER
+        color = {"OK": GREEN, "WARN": AMBER, "FAIL": RED}[lvl]
         delay = f"animation-delay:{t + i * 0.28:.2f}s"
         body.append(
             f'<g class="fade" style="{delay}">'

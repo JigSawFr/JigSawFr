@@ -18,6 +18,7 @@ query($login: String!) {
     name
     createdAt
     followers { totalCount }
+    pullRequests(states: OPEN) { totalCount }
     contributionsCollection {
       totalCommitContributions
       totalPullRequestContributions
@@ -41,6 +42,12 @@ query($login: String!) {
         primaryLanguage { name }
         languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {
           edges { size node { name } }
+        }
+        releases(first: 1, orderBy: {field: CREATED_AT, direction: DESC}) {
+          nodes { tagName publishedAt }
+        }
+        issues(states: OPEN, first: 3, orderBy: {field: CREATED_AT, direction: DESC}) {
+          nodes { number createdAt author { login } }
         }
       }
     }
@@ -84,6 +91,11 @@ def normalise(user: dict) -> dict:
             "archived": r["isArchived"],
             "pushed_at": r["pushedAt"],
             "language": (r.get("primaryLanguage") or {}).get("name"),
+            "release": next(({"tag": n["tagName"], "published_at": n["publishedAt"]}
+                             for n in r["releases"]["nodes"] if n.get("publishedAt")), None),
+            "issues": [{"number": i["number"], "created_at": i["createdAt"],
+                        "author": (i.get("author") or {}).get("login") or "ghost"}
+                       for i in r["issues"]["nodes"]],
         })
         for e in r["languages"]["edges"]:
             langs[e["node"]["name"]] = langs.get(e["node"]["name"], 0) + e["size"]
@@ -92,6 +104,7 @@ def normalise(user: dict) -> dict:
         "name": user.get("name") or user["login"],
         "created_at": user["createdAt"],
         "followers": user["followers"]["totalCount"],
+        "open_prs": user["pullRequests"]["totalCount"],
         "days": sorted(days, key=lambda d: d["date"]),
         "total": cc["contributionCalendar"]["totalContributions"],
         "commits": cc["totalCommitContributions"],
@@ -121,7 +134,8 @@ def sample(login: str, today: dt.date | None = None) -> dict:
     pushed = lambda k: (today - dt.timedelta(days=k)).isoformat() + "T12:00:00Z"
     repos = [
         {"name": "playguard-ha", "description": "", "stars": 0, "language": "Python", "pushed_at": pushed(2)},
-        {"name": "eurodns-mcp", "description": "Model Context Protocol server for the EuroDNS User API — domains, DNS zones, subscriptions and SSL.", "stars": 1, "language": "TypeScript", "pushed_at": pushed(25)},
+        {"name": "eurodns-mcp", "description": "Model Context Protocol server for the EuroDNS User API — domains, DNS zones, subscriptions and SSL.", "stars": 1, "language": "TypeScript", "pushed_at": pushed(25),
+         "release": {"tag": "v1.4.0", "published_at": pushed(2)}},
         {"name": "lacale-prowlarr-indexer", "description": "La-Cale Prowlarr API Indexer", "stars": 140, "language": None, "pushed_at": pushed(60), "archived": True},
         {"name": "aiometadata-docker", "description": "🐳 Automated Docker images for AIOMetadata - The Ultimate Stremio Metadata Addon | Multi-arch (amd64/arm64) | Auto-sync with upstream | Cosign signed", "stars": 3, "language": "Dockerfile", "pushed_at": pushed(57)},
         {"name": "asustor-runtipi", "description": "📦 Runtipi package for ASUSTOR NAS - Self-hosted app management platform with 200+ one-click apps, automatic HTTPS, and beautiful web UI. Supports x86-64 & ARM64 architectures.", "stars": 6, "language": "Python", "pushed_at": pushed(110)},
@@ -130,10 +144,12 @@ def sample(login: str, today: dt.date | None = None) -> dict:
     ]
     for r in repos:
         r.setdefault("archived", False)
+        r.setdefault("release", None)
+        r.setdefault("issues", [])
         r["url"] = f"https://github.com/{login}/{r['name']}"
     total = sum(x["count"] for x in days)
     return {
-        "login": login, "name": login, "created_at": "2013-06-01T00:00:00Z", "followers": 42,
+        "login": login, "name": login, "created_at": "2013-06-01T00:00:00Z", "followers": 42, "open_prs": 2,
         "days": days, "total": total, "commits": int(total * 0.8), "prs": 64, "issues": 21, "reviews": 9,
         "repo_count": 9, "repos": repos,
         "languages": [("TypeScript", 820_000), ("Python", 410_000), ("JavaScript", 150_000),
@@ -184,4 +200,31 @@ def stats(data: dict, today: dt.date | None = None) -> dict:
         "months": last12,
         "max_day": max(counts or [0]),
         "stars": sum(r["stars"] for r in data["repos"]),
+        "release": recent_release(data, today),
+        "intrusions": intrusions(data, today),
     }
+
+
+def _age(ts: str, today: dt.date) -> int:
+    return (today - dt.date.fromisoformat(ts[:10])).days
+
+
+def recent_release(data: dict, today: dt.date, days: int = 7) -> dict | None:
+    """Newest release published in the last week → the car is parked in the driveway."""
+    found = [(r["release"]["published_at"], r["name"], r["release"]["tag"])
+             for r in data["repos"] if r.get("release") and _age(r["release"]["published_at"], today) <= days]
+    if not found:
+        return None
+    ts, repo, tag = max(found)
+    return {"repo": repo, "tag": tag, "published_at": ts}
+
+
+def intrusions(data: dict, today: dt.date, days: int = 7) -> list[dict]:
+    """Open issues filed by someone else (not a bot) on my public repos during the last week."""
+    me = data.get("login", "").lower()
+    hits = [
+        {"repo": r["name"], "number": i["number"], "created_at": i["created_at"]}
+        for r in data["repos"] for i in r.get("issues", [])
+        if i["author"].lower() != me and not i["author"].endswith("[bot]") and _age(i["created_at"], today) <= days
+    ]
+    return sorted(hits, key=lambda h: h["created_at"], reverse=True)

@@ -14,7 +14,7 @@ import urllib.parse
 from pathlib import Path
 
 from . import data as data_mod
-from . import seasons, svg
+from . import environment, seasons, svg
 from .panels import boot, house, integrations, soc
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,8 +54,8 @@ def readme(cfg: dict, data: dict, generated: str) -> str:
 </div>
 
 ### 🏠 Smart home · Maison connectée
-<sub>My last year on GitHub, built in 3D: every pillar in the garden is a day, every lit window a month. The house dresses up for the season (Halloween, Christmas, winter…).<br>
-🇫🇷 Ma dernière année sur GitHub en 3D : chaque pilier du jardin est un jour, chaque fenêtre un mois. La maison se met aux couleurs de la saison.</sub>
+<sub>My last year on GitHub, built in 3D: every pillar in the garden is a day, every lit window a month. Live sky (time of day + average weather over France), garage open while PRs are in review, a car in the driveway after a release, an alarm when someone opens an issue — and seasonal decorations.<br>
+🇫🇷 Ma dernière année sur GitHub en 3D : chaque pilier est un jour, chaque fenêtre un mois. Ciel en direct (heure + météo moyenne de la France), garage ouvert si des PR attendent, voiture après une release, alarme si quelqu'un ouvre une issue — et déco de saison.</sub>
 
 <img src="assets/house.svg" width="100%" alt="Isometric smart home made from contributions">
 
@@ -81,11 +81,17 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=ROOT)
     ap.add_argument("--season", default=os.environ.get("PROFILE_SEASON") or None,
                     help=f"force a theme: {', '.join(seasons.THEMES)} (default: from today's date)")
+    ap.add_argument("--phase", choices=environment.PHASES, help="force the time of day")
+    ap.add_argument("--weather", choices=environment.WEATHERS, help="force the weather")
+    ap.add_argument("--demo-intrusion", action="store_true", help="pretend someone just opened an issue")
     args = ap.parse_args()
 
     cfg = tomllib.loads((ROOT / "generator" / "config.toml").read_text(encoding="utf-8"))
     data = data_mod.load(cfg["login"], offline=args.offline)
     st = data_mod.stats(data)
+    st["env"] = environment.load(args.offline, args.phase, args.weather)
+    if args.demo_intrusion:
+        st["intrusions"] = [{"repo": "eurodns-mcp", "number": 12, "created_at": st["today"].isoformat()}]
     svg.use_theme(seasons.theme(args.season or seasons.season_key(dt.date.today())))
 
     assets = args.out / "assets"
@@ -94,7 +100,7 @@ def main() -> None:
         (assets / f"{name}.svg").write_text(mod.render(cfg, data, st), encoding="utf-8")
     generated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
     (args.out / "README.md").write_text(readme(cfg, data, generated), encoding="utf-8")
-    print(f"rendered {len(PANELS)} panels for {data['login']} ({data['total']} contributions, theme {svg.THEME['key']})")
+    print(f"rendered {len(PANELS)} panels for {data['login']} ({data['total']} contributions, theme {svg.THEME['key']}, {st['env']['phase']}/{st['env']['weather']})")
 
 
 if __name__ == "__main__":
