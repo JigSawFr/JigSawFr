@@ -30,6 +30,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Optional: a classic PAT with read:user to also count private contributions.
           PROFILE_TOKEN: ${{ secrets.PROFILE_TOKEN }}
+          # Optional: birthday as MM-DD (cake & balloons that day) and the hidden CTF flag.
+          PROFILE_BIRTHDAY: ${{ secrets.PROFILE_BIRTHDAY }}
+          PROFILE_CTF_FLAG: ${{ secrets.PROFILE_CTF_FLAG }}
         run: python -m generator.main
       - name: Commit if changed
         run: |

@@ -51,14 +51,27 @@ class RenderTest(unittest.TestCase):
                 with self.subTest(mode=mode, panel=name):
                     xml.dom.minidom.parseString(mod.render(CFG, self.data, st).encode())
 
-    def test_ctf_fragments_are_all_hidden_in_the_svgs(self):
-        import base64, re
+    def test_ctf_round_trip(self):
+        import base64, codecs, os, re
+        from unittest import mock
         from generator import ctf
-        out = "".join(mod.render(CFG, self.data, self.st) for mod in PANELS.values())
-        b64 = re.search(r"maintenance token: (\S+)<", out).group(1)
-        decoded = base64.b64decode(b64).decode()
-        for frag in ctf.FRAGMENTS:
-            self.assertTrue(frag in out or frag in decoded, frag)
+        secret = "JIGSAW{test_flag_not_the_real_one}"
+        with mock.patch.dict(os.environ, {"PROFILE_CTF_FLAG": secret}):
+            out = "".join(mod.render(CFG, self.data, self.st) for mod in PANELS.values())
+        self.assertNotIn(secret, out)
+        p1 = codecs.decode(re.search(r"rot13 · (\S+) ·", out).group(1), "rot13")
+        raw = bytes.fromhex(re.search(r"2 letters\) · ([0-9a-f]+) ·", out).group(1))
+        p2 = bytes(b ^ ctf.XOR_KEY[i % 2] for i, b in enumerate(raw)).decode()
+        p3 = base64.b64decode(re.search(r"maintenance token: (\S+)<", out).group(1)).decode().split(" · ")[1]
+        self.assertEqual(p1 + p2 + p3, secret)
+
+    def test_ctf_off_without_secret(self):
+        import os
+        from unittest import mock
+        with mock.patch.dict(os.environ, {}, clear=True):
+            out = "".join(mod.render(CFG, self.data, self.st) for mod in PANELS.values())
+        self.assertNotIn("🏁", out)
+        self.assertNotIn("maintenance token", out)
 
     def test_star_milestone(self):
         today = dt.date(2026, 10, 12)

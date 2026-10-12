@@ -89,7 +89,8 @@ def render(cfg: dict, data: dict, st: dict) -> str:
         log.append(("OK", "Started birthday.target — joyeux anniversaire ! 🎂"))
     if st["outage"]:
         log.append(("WARN", f"ups.service — mains lost {st['idle_days']}d ago, running on battery"))
-    log.append(("OK", "Started honeypot.service — 1 flag hidden in these SVGs 🏁"))
+    if ctf.flag():
+        log.append(("OK", "Started honeypot.service — 1 flag hidden in these SVGs 🏁"))
     if st["intrusions"]:
         hit = st["intrusions"][0]
         log.append(("FAIL", f"perimeter.service — intrusion: new issue on {hit['repo']}#{hit['number']}"))
