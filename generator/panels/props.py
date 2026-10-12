@@ -525,20 +525,6 @@ def road(x0, x1, y0, y1) -> str:
     return "".join(out)
 
 
-def road_car(x0, x1, y, L) -> str:
-    ox, oy = P(0, 0)
-    col = THEME["neon"][0]
-    body = (box(-1.4, -.45, .2, 2.8, .9, .5, shade(col, .6)) + box(-.8, -.4, .7, 1.4, .8, .35, "#1a2438"))
-    lights = f'<circle cx="{CXH:.1f}" cy="{CYH:.1f}" r="1.3" fill="{COLD}"/>' + glow(CXH, CYH, 10, COLD, .3 + .7 * L)
-    a, b = P(x0, y), P(x1, y)
-    return (f'<g><g transform="translate({-ox:.1f},{-oy:.1f})">{body}</g>{lights}'
-            f'<animateMotion dur="16s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.85;1" calcMode="linear" '
-            f'path="M{a[0]:.1f} {a[1]:.1f}L{b[0]:.1f} {b[1]:.1f}"/></g>')
-
-
-CXH, CYH = P(1.4, 0, .45)[0] - P(0, 0)[0], P(1.4, 0, .45)[1] - P(0, 0)[1]
-
-
 def neighbour(x, y, total: int, login: str, L, rng: random.Random) -> str:
     """A small follower house: its windows glow with that person's yearly activity."""
     w, d, h = 2.8, 2.2, 1.7
@@ -559,4 +545,169 @@ def neighbour(x, y, total: int, login: str, L, rng: random.Random) -> str:
     out.append(quad_y(x + 1.15, x + 1.6, y + d, 0, .9, "#0b1320"))
     lx, ly = P(x + w / 2, y + d, 0)
     out.append(text(round(lx), round(ly + 12), "@" + login[:14], "dim", 7.5, "middle"))
+    return "".join(out)
+
+
+# ------------------------------------------------------------------ street life
+
+SKIN = ["#f1c27d", "#e0ac69", "#c68642", "#8d5524", "#ffdbac"]
+LANE_FWD, LANE_BACK = 8.75, 9.5          # road lanes (+x / -x)
+WALK_FWD, WALK_BACK = 7.9, 8.12          # sidewalk lines
+
+
+def _at_origin(fragment_world: str) -> str:
+    """Re-anchor a fragment drawn in world coords around (0,0) so animateMotion can drive it."""
+    ox, oy = P(0, 0)
+    return f'<g transform="translate({-ox:.1f},{-oy:.1f})">{fragment_world}</g>'
+
+
+def _lightbar(x, z, colors, L) -> str:
+    sx, sy = P(x, 0, z)
+    ox, oy = P(0, 0)
+    sx, sy = sx - ox, sy - oy
+    out = []
+    for i, c in enumerate(colors):
+        dx = (i - (len(colors) - 1) / 2) * 3.4
+        out.append(f'<rect class="blink" style="animation-delay:{i * .5:.1f}s;animation-duration:.6s" x="{sx + dx - 1.6:.1f}" '
+                   f'y="{sy - 1.6:.1f}" width="3.2" height="2.2" rx=".6" fill="{c}" filter="url(#glow)"/>')
+        if L > .3:
+            out.append(glow(sx + dx, sy, 14, c if c in (RED, COLD) else RED, .7, "blink"))
+    return "".join(out)
+
+
+def _headlights(front_x, z, L) -> str:
+    ox, oy = P(0, 0)
+    out = []
+    for y in (-.25, .25):
+        sx, sy = P(front_x, y, z)
+        sx, sy = sx - ox, sy - oy
+        out.append(f'<circle cx="{sx:.1f}" cy="{sy:.1f}" r="1.1" fill="{COLD}"/>')
+        if L > .3:
+            out.append(glow(sx, sy, 9, COLD, .6 * L))
+    return "".join(out)
+
+
+def _side_text(x, z, label, color) -> str:
+    """Text painted on the +y flank of a vehicle (local coords)."""
+    ox, oy = P(0, 0)
+    sx, sy = P(x, .45, z)
+    return (f'<g transform="matrix(.866 .5 0 1 {sx - ox:.1f} {sy - oy:.1f})"><text font-size="5" font-weight="700" '
+            f'style="fill:{color}">{label}</text></g>')
+
+
+def vehicle(kind: str, forward: bool, L: float) -> str:
+    """Iso vehicle centred on the origin, length along x."""
+    out = []
+    if kind in ("bus", "school"):
+        col = "#2f6db5" if kind == "bus" else "#ffc21a"
+        out.append(_at_origin(box(-2.2, -.45, .15, 4.4, .9, 1.15, col)))
+        out.append(_at_origin(quad_y(-1.9, 1.9, .45, .75, 1.1, "#bfe3ff", 'opacity=".85"')))
+        if kind == "school":
+            out.append(_at_origin(quad_y(-2.2, 2.2, .45, .5, .6, "#111")))
+            out.append(_side_text(-1.2, .25, "ÉCOLE", "#111"))
+        else:
+            out.append(_side_text(-1.4, .3, "LIGNE 42", "#ffffff"))
+        front = 2.2
+    elif kind == "fire":
+        out.append(_at_origin(box(-1.9, -.45, .15, 3.8, .9, 1.0, "#d62828")))
+        out.append(_at_origin(box(.9, -.42, 1.15, 1.0, .84, .35, "#1a2438")))
+        out.append(_at_origin(line(P(-1.7, 0, 1.35), P(.6, 0, 1.35), "#d9e2ef", 1.6)))
+        out.append(_at_origin(quad_y(-1.6, .6, .45, .45, .75, "#ffd166")))
+        out.append(_lightbar(1.4, 1.55, [RED, "#ffd166"], L))
+        front = 1.9
+    elif kind == "ambulance":
+        out.append(_at_origin(box(-1.3, -.43, .15, 2.6, .86, 1.05, "#f4f7fb")))
+        out.append(_at_origin(quad_y(-1.2, 1.2, .43, .5, .62, "#ff4d6d")))
+        out.append(_side_text(-.4, .95, "✚", RED))
+        out.append(_lightbar(.6, 1.25, ["#3b82f6", RED], L))
+        front = 1.3
+    elif kind == "police":
+        out.append(_at_origin(box(-.95, -.4, .15, 1.9, .8, .45, "#f4f7fb")))
+        out.append(_at_origin(quad_y(-.95, .95, .4, .3, .42, "#1d4ed8")))
+        out.append(_at_origin(box(-.5, -.35, .6, 1.0, .7, .33, "#1a2438")))
+        out.append(_lightbar(0, 1.0, ["#3b82f6", RED], L))
+        front = .95
+    elif kind in ("van", "grid"):
+        col = "#8a5a2b" if kind == "van" else "#ff9f1c"
+        out.append(_at_origin(box(-1.1, -.42, .15, 2.2, .84, .95, col)))
+        out.append(_side_text(-.8, .55, "COLIS" if kind == "van" else "⚡ RÉSEAU", "#ffffff"))
+        if kind == "grid":
+            out.append(_lightbar(0, 1.15, ["#ffb547"], L))
+        front = 1.1
+    elif kind == "garbage":
+        out.append(_at_origin(box(-1.6, -.45, .15, 3.2, .9, 1.05, "#2e8b57")))
+        out.append(_at_origin(box(.8, -.42, 1.2, .8, .84, .1, "#1a2438")))
+        front = 1.6
+    else:   # car, colour in the kind name: car:#hex
+        col = kind.split(":", 1)[1] if ":" in kind else "#5c6f88"
+        out.append(_at_origin(box(-.9, -.4, .15, 1.8, .8, .45, col)))
+        out.append(_at_origin(box(-.5, -.35, .6, 1.0, .7, .33, "#1a2438")))
+        front = .9
+    out.append(_headlights(front if forward else -front, .4, L))
+    return "".join(out)
+
+
+def drive(fragment: str, x0: float, x1: float, lane: float, dur: float, begin: float) -> str:
+    a, b = P(x0, lane), P(x1, lane)
+    return (f'<g>{fragment}<animateMotion dur="{dur}s" begin="{-begin:.1f}s" repeatCount="indefinite" '
+            f'path="M{a[0]:.1f} {a[1]:.1f}L{b[0]:.1f} {b[1]:.1f}"/></g>')
+
+
+def parked(fragment: str, x: float, lane: float) -> str:
+    sx, sy = P(x, lane)
+    return f'<g transform="translate({sx:.1f},{sy:.1f})">{fragment}</g>'
+
+
+def person(kind: str, rng: random.Random, umbrella=False) -> str:
+    """A walking figure (screen coords around its feet)."""
+    k = .72 if kind in ("kid", "ghost_kid", "witch_kid") else 1.0
+    skin = rng.choice(SKIN)
+    shirt = rng.choice(["#3b82f6", "#ff4d6d", "#39ff88", "#ffd166", "#a64dff", "#ff9f1c", "#e5e7eb"])
+    legs = f'<path class="legA" d="M-1 {-6 * k:.1f}v{6 * k:.1f}" stroke="#2b3a52" stroke-width="1.6"/>' \
+           f'<path class="legB" d="M1 {-6 * k:.1f}v{6 * k:.1f}" stroke="#2b3a52" stroke-width="1.6"/>'
+    if kind == "ghost_kid":
+        body = (f'<path d="M-3.5 0V-8a3.5 3.5 0 0 1 7 0V0l-1.2-1.2-1.2 1.2-1.1-1.2-1.1 1.2-1.2-1.2z" fill="#f4f6ff"/>'
+                f'<circle cx="-1.2" cy="-8.4" r=".7" fill="#111"/><circle cx="1.2" cy="-8.4" r=".7" fill="#111"/>')
+        return f'<g class="walk">{body}</g>'
+    if kind == "witch_kid":
+        body = (legs + f'<path d="M-2.6 -5L0 -10L2.6 -5z" fill="#4b1d6b"/><circle cy="-11.2" r="1.8" fill="{skin}"/>'
+                f'<path d="M-3.2 -12.4h6.4M-1.6 -12.4L0 -17L1.6 -12.4z" stroke="#111" stroke-width=".8" fill="#111"/>'
+                f'<circle cx="2.5" cy="-6" r="1.4" fill="#ff7b00"/>')
+        return f'<g class="walk">{body}</g>'
+    if kind == "santa":
+        shirt, extra = "#d62828", ('<path d="M-1.6 -11.2q1.6 3 3.2 0" fill="#fff"/><path d="M-2 -14.6h4l-2-3z" fill="#d62828"/>'
+                                   '<circle cx="0" cy="-17.6" r=".7" fill="#fff"/><circle cx="-4" cy="-8" r="2.8" fill="#8a5a2b"/>')
+    else:
+        extra = ""
+    body = (legs + f'<rect x="{-2.2 * k:.1f}" y="{-11.5 * k:.1f}" width="{4.4 * k:.1f}" height="{6 * k:.1f}" rx="1.4" fill="{shirt}"/>'
+            f'<circle cy="{-13.3 * k:.1f}" r="{2 * k:.1f}" fill="{skin}"/>' + extra)
+    if kind == "kid":
+        body += f'<rect x="-3.6" y="-8.2" width="2" height="3.4" rx=".6" fill="{rng.choice(["#ff4d6d", "#00e5ff", "#ffd166"])}"/>'
+    if kind == "elder":
+        body += '<path d="M3 -7l1.4 7" stroke="#8a5a2b" stroke-width="1"/>'
+    if kind == "walker":
+        body += ('<path d="M2 -7Q6 -4 9 -2.5" fill="none" stroke="#c9d6e5" stroke-width=".5"/>'
+                 '<g class="walk" style="animation-duration:.3s"><ellipse cx="11" cy="-2.5" rx="3" ry="1.6" fill="#c68642"/>'
+                 '<circle cx="13.6" cy="-3.6" r="1.3" fill="#c68642"/><path d="M9 -1.2v1.2M12.6 -1.2v1.2" stroke="#8d5524" stroke-width=".8"/></g>')
+    if umbrella and kind in ("adult", "walker", "elder"):
+        body += (f'<path d="M0 {-13.3 * k:.1f}V-22" stroke="#111" stroke-width=".6"/>'
+                 f'<path d="M-6 -21a6 4 0 0 1 12 0z" fill="{rng.choice(["#ff4d6d", "#3b82f6", "#111", "#ffd166"])}"/>')
+    return f'<g class="walk" style="animation-duration:{.3 if kind == "jogger" else .45}s">{body}</g>'
+
+
+def stroll(fragment: str, forward: bool, lane: float, dur: float, begin: float) -> str:
+    x0, x1 = (-1, 54) if forward else (54, -1)
+    flip = "" if forward else ' transform="scale(-1,1)"'
+    a, b = P(x0, lane), P(x1, lane)
+    return (f'<g><g{flip}>{fragment}</g><animateMotion dur="{dur}s" begin="{-begin:.1f}s" repeatCount="indefinite" '
+            f'path="M{a[0]:.1f} {a[1]:.1f}L{b[0]:.1f} {b[1]:.1f}"/></g>')
+
+
+def sidewalk(x0, x1, y0, y1) -> str:
+    out = [poly([P(x0, y0, .02), P(x1, y0, .02), P(x1, y1, .02), P(x0, y1, .02)], "#273242"),
+           line(P(x0, y1, .03), P(x1, y1, .03), "#3a4a63", 1.2)]
+    k = x0 + 1
+    while k < x1:
+        out.append(line(P(k, y0, .03), P(k, y1, .03), "#1e2836", .6))
+        k += 1.5
     return "".join(out)

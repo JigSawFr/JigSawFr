@@ -61,6 +61,11 @@ CSS = """
 .peck { animation: peck 4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 @keyframes peck { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(18deg); } 90% { transform: rotate(0); } 93% { transform: rotate(14deg); } }
 .ups { animation: ups 3s ease-in-out infinite; }
+.walk { animation: walk .45s ease-in-out infinite alternate; }
+@keyframes walk { to { transform: translateY(-1.2px); } }
+.legA, .legB { transform-box: fill-box; transform-origin: 50% 0; animation: legs .45s ease-in-out infinite alternate; }
+.legB { animation-direction: alternate-reverse; }
+@keyframes legs { from { transform: rotate(22deg); } to { transform: rotate(-22deg); } }
 @keyframes ups { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 @keyframes alarm { 0%,100% { opacity: .05; } 50% { opacity: .5; } }
 """
@@ -396,6 +401,40 @@ def lot_front(rng: random.Random, L: float, st: dict, data: dict) -> str:
     return "".join(out)
 
 
+# ------------------------------------------------------------------ street life
+
+def street(st: dict, env: dict, L: float) -> str:
+    rng = random.Random(11)
+    key = THEME["key"]
+    rainy = env["weather"] in ("rain", "storm")
+    out = [props.sidewalk(0, 53, 7.72, 8.28)]
+
+    walkers = [("adult", True, 70, 0), ("kid", True, 60, 22), ("jogger", True, 28, 6), ("walker", True, 82, 44),
+               ("elder", False, 110, 12), ("adult", False, 75, 50), ("kid", False, 62, 30)]
+    if key == "halloween":
+        walkers = [(("ghost_kid" if i % 2 else "witch_kid") if k == "kid" else k, f, d, b)
+                   for i, (k, f, d, b) in enumerate(walkers)] + [("ghost_kid", True, 64, 40)]
+    if key == "noel":
+        walkers.append(("santa", False, 90, 70))
+    for kind, fwd, dur, begin in walkers:
+        out.append(props.stroll(props.person(kind, rng, umbrella=rainy), fwd,
+                                props.WALK_FWD if fwd else props.WALK_BACK, dur, begin))
+
+    out.append(props.road(0, 53, 8.3, 9.9))
+    # incidents park a vehicle at the curb in front of the house
+    if st["intrusions"]:
+        out.append(props.parked(props.vehicle("police", True, L), 37, 8.55))
+    if st["outage"]:
+        out.append(props.parked(props.vehicle("grid", True, L), 41.5, 8.55))
+    fwd = ["car:#ff4d6d", "bus", "police", "car:#39ff88", "school"]
+    back = ["fire", "car:#ffd166", "van", "ambulance", "garbage", "car:#a64dff"]
+    for lane, kinds, forward, dur in ((props.LANE_FWD, fwd, True, 26), (props.LANE_BACK, back, False, 30)):
+        x0, x1 = (-3, 56) if forward else (56, -3)
+        for i, kind in enumerate(kinds):
+            out.append(props.drive(props.vehicle(kind, forward, L), x0, x1, lane, dur, i * dur / len(kinds)))
+    return "".join(out)
+
+
 # ------------------------------------------------------------------ live captions
 
 def ticker_text(st: dict) -> str:
@@ -519,9 +558,8 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     body.append(text(round(bx), round(by - 52), "today", "", 9, "middle", f'style="fill:{b}"'))
     body.append(mower())
 
-    # the street and my followers' houses across it
-    body.append(props.road(0, 53, 8.3, 9.9))
-    body.append(props.road_car(-1, 54, 9.5, L))
+    # the street: sidewalk with passers-by, two lanes of traffic, then my followers' houses across it
+    body.append(street(st, env, L))
     nrng = random.Random(3)
     for i, n in enumerate(data.get("neighbours", [])[:6]):
         body.append(props.neighbour(22.5 + i * 4, 10.8, n["total"], n["login"], L, nrng))
