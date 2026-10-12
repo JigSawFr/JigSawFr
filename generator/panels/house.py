@@ -111,7 +111,7 @@ def sky(env: dict, rng: random.Random) -> str:
         out.append(f'<circle cx="{mx}" cy="{my}" r="24" fill="{moon}" filter="url(#softglow)" opacity=".95"/>'
                    f'<circle cx="{mx - 7}" cy="{my - 5}" r="4" fill="{shade(moon, .85)}"/>'
                    f'<circle cx="{mx + 8}" cy="{my + 7}" r="3" fill="{shade(moon, .85)}"/>')
-    elif not (gloomy or env["weather"] == "snow") or phase != "day":
+    elif not (gloomy or env["weather"] == "snow"):
         sun = {"day": "#ffd166", "dawn": "#ff9a4d", "dusk": "#ff6b4a"}[phase]
         sy = my if phase == "day" else 128
         rays = "".join(f'<path d="M{mx} {sy - 30}V{sy - 40}" stroke="{sun}" stroke-width="2.5" stroke-linecap="round" '
@@ -403,11 +403,18 @@ def lot_front(rng: random.Random, L: float, st: dict, data: dict) -> str:
 
 # ------------------------------------------------------------------ street life
 
-def street(st: dict, env: dict, L: float) -> str:
+HEDGE_Y, HOUSE_Y, FRONT_Y = 10.65, 12.9, 15.5     # neighbour plots, set back from the road
+PLOT_X0, PLOT_STEP = 25, 3.7
+
+
+def street(st: dict, env: dict, L: float, neighbours: list[dict]) -> str:
     rng = random.Random(11)
     key = THEME["key"]
     rainy = env["weather"] in ("rain", "storm")
     out = [props.sidewalk(0, 53, 7.72, 8.28)]
+    # low furniture only on this side, so the contribution garden stays visible
+    out += [props.sign(5, 8.12, "30"), props.bench(11, 7.76), props.bin_(20.5, 7.8), props.bench(26.6, 7.76),
+            props.sign(31.6, 8.12, "school"), props.hydrant(37, 8.05), props.sign(51, 8.12, "stop")]
 
     walkers = [("adult", True, 70, 0), ("kid", True, 60, 22), ("jogger", True, 28, 6), ("walker", True, 82, 44),
                ("elder", False, 110, 12), ("adult", False, 75, 50), ("kid", False, 62, 30)]
@@ -421,6 +428,7 @@ def street(st: dict, env: dict, L: float) -> str:
                                 props.WALK_FWD if fwd else props.WALK_BACK, dur, begin))
 
     out.append(props.road(0, 53, 8.3, 9.9))
+    out.append(props.zebra(33, 8.3, 9.9))
     # incidents park a vehicle at the curb in front of the house
     if st["intrusions"]:
         out.append(props.parked(props.vehicle("police", True, L), 37, 8.55))
@@ -432,6 +440,23 @@ def street(st: dict, env: dict, L: float) -> str:
         x0, x1 = (-3, 56) if forward else (56, -3)
         for i, kind in enumerate(kinds):
             out.append(props.drive(props.vehicle(kind, forward, L), x0, x1, lane, dur, i * dur / len(kinds)))
+
+    # far sidewalk: alternating street trees and lamp posts, a bus stop, a few more passers-by
+    out.append(props.sidewalk(0, 53, 9.95, 10.55))
+    trng = random.Random(5)
+    for i, x in enumerate([1.5, 7.5, 13.5, 19.5, 24.6, 28.3, 32, 35.7, 39.4, 43.1]):
+        out.append(props.lamp_post(x, 10.3, L) if i % 2 else props.street_tree(x, 10.3, L, trng))
+    out.append(props.bus_stop(47.2, 9.98, L))
+    for kind, fwd, dur, begin in [("adult", True, 78, 15), ("kid", False, 66, 35), ("walker", False, 90, 5)]:
+        out.append(props.stroll(props.person(kind, rng, umbrella=rainy), fwd, props.WALK_FAR[0 if fwd else 1], dur, begin))
+
+    # my followers' houses, each with its own garden
+    for i, n in enumerate(neighbours[:6]):
+        x = PLOT_X0 + i * PLOT_STEP
+        prng = random.Random(n["login"])
+        out.append(props.neighbour_plot(x, props.NEIGHBOUR_W, HEDGE_Y, FRONT_Y, L, prng))
+        out.append(props.neighbour(x, HOUSE_Y, n["total"], n["login"], L, prng))
+        out.append(props.neighbour_front(x, props.NEIGHBOUR_W, FRONT_Y, L, prng))
     return "".join(out)
 
 
@@ -559,10 +584,7 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     body.append(mower())
 
     # the street: sidewalk with passers-by, two lanes of traffic, then my followers' houses across it
-    body.append(street(st, env, L))
-    nrng = random.Random(3)
-    for i, n in enumerate(data.get("neighbours", [])[:6]):
-        body.append(props.neighbour(22.5 + i * 4, 10.8, n["total"], n["login"], L, nrng))
+    body.append(street(st, env, L, data.get("neighbours", [])))
     if "butterflies" in deco:
         body.append(props.butterflies())
     body.append(yard(rng, Lh))
@@ -579,7 +601,7 @@ def render(cfg: dict, data: dict, st: dict) -> str:
     birds = f" · {st['stars_week']} new ★ = {min(7, st['stars_week'])} birds" if st["stars_week"] else ""
     info = [
         (f"{data['total']} events · 365 days · streak {st['current_streak']}d", f'style="fill:{a}" font-weight="700"', 11),
-        (environment.describe(env)[0] + (f" · avg of {env['cities']} cities" if env["cities"] else ""), "", 10.5),
+        (environment.describe(env)[0], "", 10.5),
         (f"{garage} · {drive}", "", 10.5),
         (f"{inverter_lines(st, env)[0]} {inverter_lines(st, env)[1]}{birds}", "", 10.5),
         status_line(st),

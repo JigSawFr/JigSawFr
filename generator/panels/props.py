@@ -525,9 +525,12 @@ def road(x0, x1, y0, y1) -> str:
     return "".join(out)
 
 
+NEIGHBOUR_W, NEIGHBOUR_D = 2.6, 1.8
+
+
 def neighbour(x, y, total: int, login: str, L, rng: random.Random) -> str:
     """A small follower house: its windows glow with that person's yearly activity."""
-    w, d, h = 2.8, 2.2, 1.7
+    w, d, h = NEIGHBOUR_W, NEIGHBOUR_D, 1.5
     wall = rng.choice(["#18233a", "#1d2a2a", "#2a1f33", "#2b2620"])
     roof = rng.choice(["#3a7bd5", "#ff4d6d", "#39b54a", "#a64dff", "#e07b39"])
     power = min(1.0, total / 1500)
@@ -544,7 +547,10 @@ def neighbour(x, y, total: int, login: str, L, rng: random.Random) -> str:
                           f'fill-opacity="{op:.2f}"' + (' filter="url(#glow)"' if total and L > .3 else "")))
     out.append(quad_y(x + 1.15, x + 1.6, y + d, 0, .9, "#0b1320"))
     lx, ly = P(x + w / 2, y + d, 0)
-    out.append(text(round(lx), round(ly + 12), "@" + login[:14], "dim", 7.5, "middle"))
+    label = "@" + login[:14]
+    out.append(f'<rect x="{lx - len(label) * 2.3 - 3:.1f}" y="{ly + 5:.1f}" width="{len(label) * 4.6 + 6:.1f}" height="10" '
+               f'rx="3" fill="#070b12" opacity=".8"/>')
+    out.append(text(round(lx), round(ly + 12.5), label, "", 7.5, "middle", 'style="fill:#c9d6e5"'))
     return "".join(out)
 
 
@@ -710,4 +716,192 @@ def sidewalk(x0, x1, y0, y1) -> str:
     while k < x1:
         out.append(line(P(k, y0, .03), P(k, y1, .03), "#1e2836", .6))
         k += 1.5
+    return "".join(out)
+
+
+# ------------------------------------------------------------------ street furniture & neighbour gardens
+
+WALK_FAR = (10.15, 10.38)                # far sidewalk lines
+
+
+def zebra(x, y0, y1, w=1.4) -> str:
+    out, y = [], y0 + .1
+    while y < y1 - .1:
+        out.append(poly([P(x, y, .02), P(x + w, y, .02), P(x + w, y + .2, .02), P(x, y + .2, .02)], "#e8edf5", 'opacity=".75"'))
+        y += .4
+    return "".join(out)
+
+
+def bench(x, y) -> str:
+    return (box(x, y, .35, 1.4, .35, .08, "#8a5a2b") + box(x, y, .43, 1.4, .08, .35, "#8a5a2b")
+            + line(P(x + .1, y + .3, 0), P(x + .1, y + .3, .35), "#3a4a63", 1.2)
+            + line(P(x + 1.3, y + .3, 0), P(x + 1.3, y + .3, .35), "#3a4a63", 1.2))
+
+
+def bin_(x, y) -> str:
+    return box(x, y, 0, .35, .35, .55, "#2e8b57") + box(x - .03, y - .03, .55, .41, .41, .06, "#1f5a36")
+
+
+def hydrant(x, y) -> str:
+    sx, sy = P(x, y)
+    return (f'<rect x="{sx - 2:.1f}" y="{sy - 7:.1f}" width="4" height="7" rx="1" fill="#d62828"/>'
+            f'<circle cx="{sx:.1f}" cy="{sy - 7:.1f}" r="2.2" fill="#d62828"/><rect x="{sx - 3.2:.1f}" y="{sy - 5:.1f}" '
+            f'width="6.4" height="1.6" fill="#a61e1e"/>')
+
+
+def sign(x, y, kind: str) -> str:
+    base, top = P(x, y), P(x, y, 2.1)
+    out = [line(base, top, "#8aa0b8", 1.1)]
+    tx, ty = top
+    if kind == "30":
+        out.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="5" fill="#fff" stroke="#d62828" stroke-width="1.6"/>'
+                   f'<text x="{tx:.1f}" y="{ty + 2:.1f}" font-size="5" font-weight="700" text-anchor="middle" style="fill:#111">30</text>')
+    elif kind == "school":
+        out.append(f'<path d="M{tx:.1f} {ty - 6:.1f}l6 10h-12z" fill="#fff" stroke="#d62828" stroke-width="1.4"/>'
+                   f'<path d="M{tx - 2:.1f} {ty + 2:.1f}l1-4 1 4M{tx + .5:.1f} {ty + 2:.1f}l1-3 1 3" stroke="#111" stroke-width=".7" fill="none"/>')
+    elif kind == "bus":
+        out.append(f'<rect x="{tx - 4:.1f}" y="{ty - 5:.1f}" width="8" height="7" rx="1" fill="#2f6db5"/>'
+                   f'<text x="{tx:.1f}" y="{ty:.1f}" font-size="4.5" font-weight="700" text-anchor="middle" style="fill:#fff">BUS</text>')
+    elif kind == "stop":
+        pts_ = " ".join(f"{tx + 5 * math.cos(math.radians(22.5 + 45 * k)):.1f},{ty + 5 * math.sin(math.radians(22.5 + 45 * k)):.1f}"
+                        for k in range(8))
+        out.append(f'<polygon points="{pts_}" fill="#d62828"/><text x="{tx:.1f}" y="{ty + 1.6:.1f}" font-size="3.4" '
+                   f'font-weight="700" text-anchor="middle" style="fill:#fff">STOP</text>')
+    return "".join(out)
+
+
+def bus_stop(x, y, L) -> str:
+    """Glass shelter with a bench and a lit timetable."""
+    out = [box(x, y, 0, 2.2, .7, .05, "#3a4658"),
+           quad_y(x, x + 2.2, y + .05, .1, 1.9, "#bfe3ff", 'opacity=".25"'),
+           box(x - .05, y - .05, 1.9, 2.3, .8, .1, "#2b3a52"),
+           box(x + .3, y + .1, .35, 1.4, .3, .08, "#8a5a2b"),
+           quad_y(x + 1.8, x + 2.15, y + .7, .4, 1.4, WARM, f'opacity="{.35 + .6 * L:.2f}"')]
+    return "".join(out) + sign(x + 2.5, y + .4, "bus")
+
+
+def street_tree(x, y, L, rng: random.Random) -> str:
+    sx, sy = P(x, y)
+    key, deco = THEME["key"], THEME["deco"]
+    out = [f'<ellipse cx="{sx:.1f}" cy="{sy:.1f}" rx="7" ry="3.5" fill="#3a2a1a"/>',
+           f'<path d="M{sx:.1f} {sy:.1f}v-18" stroke="#6b4a2b" stroke-width="2.4"/>']
+    bare = key in ("hiver", "nouvel_an") or (key == "noel")
+    if bare:
+        out.append(f'<path d="M{sx:.1f} {sy - 12:.1f}l-8-9m8 4l7-10m-7 4l-2-9m-6 2l-4-3m17-2l5-3" fill="none" '
+                   f'stroke="#6b4a2b" stroke-width="1.6" stroke-linecap="round"/>')
+        if "snow_roof" in deco:
+            out.append(f'<path d="M{sx - 9:.1f} {sy - 21:.1f}l2 1M{sx + 6:.1f} {sy - 25:.1f}l2 1M{sx - 2:.1f} {sy - 25:.1f}l2 1" '
+                       f'stroke="#f4f8ff" stroke-width="2" stroke-linecap="round"/>')
+        if THEME["garland"]:
+            cols = THEME["garland"]
+            for i in range(9):
+                bx, by = sx + rng.uniform(-9, 9), sy - rng.uniform(10, 26)
+                out.append(f'<circle class="blink" style="animation-delay:{i * .23:.2f}s" cx="{bx:.1f}" cy="{by:.1f}" r="1.3" '
+                           f'fill="{cols[i % len(cols)]}" opacity="{.5 + .5 * L:.2f}" filter="url(#glow)"/>')
+    else:
+        col = THEME["foliage"] or ("#3b1f4a" if key == "halloween" else ("#1f6b5a" if key == "cyber" else "#2e8b57"))
+        out += [f'<circle cx="{sx + dx:.1f}" cy="{sy + dy:.1f}" r="{r}" fill="{shade(col, k)}"/>'
+                for dx, dy, r, k in [(-5, -17, 6, .8), (5, -18, 6, .7), (0, -24, 7.5, 1)]]
+        if key == "halloween":
+            out.append(pumpkin(sx + 6, sy - 1, 3.5))
+    return "".join(out)
+
+
+def gnome(sx, sy) -> str:
+    return (f'<path d="M{sx - 2.5:.1f} {sy:.1f}h5l-1-5h-3z" fill="#3b82f6"/><circle cx="{sx:.1f}" cy="{sy - 6:.1f}" r="1.8" fill="#f1c27d"/>'
+            f'<path d="M{sx - 2:.1f} {sy - 7:.1f}L{sx:.1f} {sy - 12:.1f}L{sx + 2:.1f} {sy - 7:.1f}z" fill="#d62828"/>'
+            f'<path d="M{sx - 1.6:.1f} {sy - 5.4:.1f}q1.6 3 3.2 0" fill="#fff"/>')
+
+
+def swing(x, y) -> str:
+    a, b = P(x, y, 1.8), P(x + 1.4, y, 1.8)
+    return (line(P(x, y), a, "#8a5a2b", 1.4) + line(P(x + 1.4, y), b, "#8a5a2b", 1.4) + line(a, b, "#8a5a2b", 1.4)
+            + f'<g class="bob" style="animation-duration:2.2s">{line(P(x + .5, y, 1.8), P(x + .5, y, .5), "#c9d6e5", .5)}'
+            f'{line(P(x + .9, y, 1.8), P(x + .9, y, .5), "#c9d6e5", .5)}{box(x + .45, y - .1, .45, .5, .2, .06, "#ff4d6d")}</g>')
+
+
+def doghouse(x, y) -> str:
+    sx, sy = P(x + .4, y + .7, 0)
+    return (box(x, y, 0, .8, .7, .55, "#c0392b")
+            + poly([P(x - .05, y + .35, .95), P(x + .85, y + .35, .95), P(x + .85, y + .75, .55), P(x - .05, y + .75, .55)], "#7a2418")
+            + f'<g class="walk" style="animation-duration:.6s"><ellipse cx="{sx + 7:.1f}" cy="{sy - 2:.1f}" rx="2.6" ry="1.4" fill="#c68642"/>'
+            f'<circle cx="{sx + 9.2:.1f}" cy="{sy - 3:.1f}" r="1.2" fill="#c68642"/></g>')
+
+
+def bbq(x, y) -> str:
+    sx, sy = P(x, y, .7)
+    return (line(P(x, y), (sx, sy), "#3a4a63", 1) + f'<ellipse cx="{sx:.1f}" cy="{sy:.1f}" rx="4" ry="2" fill="#111"/>'
+            f'<circle class="smoke" style="animation-delay:.4s" cx="{sx:.1f}" cy="{sy - 3:.1f}" r="2" fill="#8aa0b8"/>')
+
+
+def greenhouse(x, y) -> str:
+    return (box(x, y, 0, 1.2, .9, .8, "#bfe3ff", 'opacity=".45"')
+            + poly([P(x, y + .45, 1.2), P(x + 1.2, y + .45, 1.2), P(x + 1.2, y + .9, .8), P(x, y + .9, .8)], "#dff3ff", 'opacity=".5"'))
+
+
+def neighbour_plot(x, w, y_hedge, y_front, L, rng: random.Random) -> str:
+    """Lawn, hedge on the street side, a tall item behind the house and a small one in front."""
+    key, deco = THEME["key"], THEME["deco"]
+    snowy = "snow_roof" in deco
+    lawn = "#2a3442" if snowy else "#14281f"
+    out = [poly([P(x - .45, y_hedge, .01), P(x + w + .45, y_hedge, .01), P(x + w + .45, y_front, .01),
+                 P(x - .45, y_front, .01)], lawn, f'stroke="{shade(lawn, 1.3)}" stroke-width=".5"')]
+    hedge = "#1f5a36"
+    out.append(box(x - .45, y_hedge, 0, w + .9, .3, .45, hedge))
+    if snowy:
+        out.append(poly([P(x - .45, y_hedge, .46), P(x + w + .45, y_hedge, .46), P(x + w + .45, y_hedge + .3, .46),
+                         P(x - .45, y_hedge + .3, .46)], "#f4f8ff"))
+    if THEME["garland"] and key != "cyber":
+        cols = THEME["garland"]
+        for i in range(6):
+            gx, gy = P(x - .3 + i * (w + .6) / 5, y_hedge + .3, .45)
+            out.append(f'<circle class="blink" style="animation-delay:{i * .3:.1f}s" cx="{gx:.1f}" cy="{gy:.1f}" r="1.1" '
+                       f'fill="{cols[i % len(cols)]}" opacity="{.5 + .5 * L:.2f}" filter="url(#glow)"/>')
+    back = rng.choice(["tree", "swing", "greenhouse", "tree"])
+    if back == "tree":
+        out.append(street_tree(x + .2, y_hedge + 1.2, L, rng))
+    elif back == "swing":
+        out.append(swing(x + w - 1.2, y_hedge + .9))
+    else:
+        out.append(greenhouse(x - .3, y_hedge + .6))
+    return "".join(out)
+
+
+def neighbour_front(x, w, y_front, L, rng: random.Random) -> str:
+    """Small things on the front lawn, facing the viewer (and the seasonal touch)."""
+    key, deco = THEME["key"], THEME["deco"]
+    out = []
+    pick = rng.choice(["gnome", "dog", "bbq", "mailbox", "flowers"])
+    fx, fy = x + w + .1, y_front - .5
+    if pick == "gnome":
+        out.append(gnome(*P(fx, fy)))
+    elif pick == "dog":
+        out.append(doghouse(x + w - .6, y_front - 1.0))
+    elif pick == "bbq" and key not in ("hiver", "noel", "nouvel_an"):
+        out.append(bbq(fx, fy))
+    elif pick == "mailbox":
+        out.append(mailbox(fx, fy - .3, rng.random() < .5))
+    else:
+        out.append(flowers(rng, x - .3, x + w + .3, y_front - .35, y_front - .1, 10))
+    if key == "halloween":
+        out.append(pumpkin(*P(x - .1, y_front - .3), 3.6))
+    elif key == "noel":
+        out.append(_mini_xmas(x - .1, y_front - .3, rng))
+    elif "snowman" in deco:
+        sx, sy = P(x - .1, y_front - .3)
+        out.append(f'<circle cx="{sx:.1f}" cy="{sy - 4:.1f}" r="4" fill="#eef4ff"/><circle cx="{sx:.1f}" cy="{sy - 10:.1f}" r="3" fill="#eef4ff"/>'
+                   f'<path d="M{sx + 1:.1f} {sy - 10:.1f}l3 .6-3 .6z" fill="#ff7b00"/>')
+    elif key in ("printemps", "ete", "quatorze_juillet"):
+        out.append(flowers(rng, x - .3, x + w + .3, y_front - .35, y_front - .1, 8))
+    return "".join(out)
+
+
+def _mini_xmas(x, y, rng: random.Random) -> str:
+    sx, sy = P(x, y)
+    out = [f'<path d="M{sx - 5:.1f} {sy - 2:.1f}L{sx:.1f} {sy - 16:.1f}L{sx + 5:.1f} {sy - 2:.1f}z" fill="#1f6b3a"/>',
+           f'<path class="beam" d="M{sx:.1f} {sy - 19:.1f}l1 2.4 2.6.2-2 1.6.7 2.6-2.3-1.4-2.3 1.4.7-2.6-2-1.6 2.6-.2z" fill="#ffd166"/>']
+    cols = THEME["garland"] or ["#ff4d6d", "#ffd166"]
+    for i in range(5):
+        out.append(f'<circle class="blink" style="animation-delay:{i * .3:.1f}s" cx="{sx + rng.uniform(-3, 3):.1f}" '
+                   f'cy="{sy - 4 - i * 2.2:.1f}" r="1" fill="{cols[i % len(cols)]}" filter="url(#glow)"/>')
     return "".join(out)

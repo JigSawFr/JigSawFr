@@ -80,6 +80,16 @@ class RenderTest(unittest.TestCase):
         repo["stars"] = 105
         self.assertIsNone(data_mod.star_milestone({"repos": [repo]}, today))
 
+    def test_neighbour_plots_stay_in_frame(self):
+        from generator.panels import house, props
+        from generator.panels.iso import P
+        for i in range(6):
+            x = house.PLOT_X0 + i * house.PLOT_STEP
+            for cx in (x - .45, x + props.NEIGHBOUR_W + .45):
+                for cy in (house.HEDGE_Y, house.FRONT_Y):
+                    sx, sy = P(cx, cy)
+                    self.assertTrue(0 <= sx <= 840 and 0 <= sy + 14 <= house.H, (i, sx, sy))
+
     def test_weather_codes(self):
         self.assertEqual(environment.weather_kind(0), "clear")
         self.assertEqual(environment.weather_kind(61), "rain")
