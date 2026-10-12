@@ -53,8 +53,6 @@ def readme(cfg: dict, data: dict, generated: str) -> str:
 **{cfg['tagline_en']}**<br>
 <sub>🇫🇷 {cfg['tagline_fr']}</sub>
 
-<img alt="visitors" src="https://komarev.com/ghpvc/?username={data['login']}&label=%F0%9F%94%94%20VISITORS%20%C2%B7%20VISITES&color=00b8d4&style=for-the-badge">
-
 </div>
 
 ### 🏠 Smart home · Maison connectée

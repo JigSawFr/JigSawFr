@@ -5,8 +5,6 @@
 **IT · Home automation · Security — I automate my house, then I secure it.**<br>
 <sub>🇫🇷 IT · Domotique · Sécurité — j'automatise ma maison, puis je la sécurise.</sub>
 
-<img alt="visitors" src="https://komarev.com/ghpvc/?username=JigSawFr&label=%F0%9F%94%94%20VISITORS%20%C2%B7%20VISITES&color=00b8d4&style=for-the-badge">
-
 </div>
 
 ### 🏠 Smart home · Maison connectée
