@@ -74,6 +74,8 @@ def normalise(user: dict) -> dict:
     repos = []
     langs: dict[str, int] = {}
     for r in user["repositories"]["nodes"]:
+        if r["name"].lower() == user["login"].lower():  # the profile repo itself is noise
+            continue
         repos.append({
             "name": r["name"],
             "description": r.get("description") or "",
