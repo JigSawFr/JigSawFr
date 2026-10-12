@@ -1,0 +1,52 @@
+# JIGSAW//HOMELAB-OS — profile configuration.
+# Edit freely: everything here ends up in README.md / assets/*.svg on the next run.
+
+login = "JigSawFr"
+display_name = "JigSaw"
+tagline_en = "IT · Home automation · Security — I automate my house, then I secure it."
+tagline_fr = "IT · Domotique · Sécurité — j'automatise ma maison, puis je la sécurise."
+location = "France"
+hostname = "homelab.local"
+
+# Each month of the last year becomes a room of the house (oldest → newest).
+rooms = [
+  { name = "GARAGE",      device = "lock" },
+  { name = "ENTRÉE",      device = "camera" },
+  { name = "SALON",       device = "bulb" },
+  { name = "CUISINE",     device = "thermo" },
+  { name = "BUREAU",      device = "bulb" },
+  { name = "CHAMBRE",     device = "sensor" },
+  { name = "SDB",         device = "thermo" },
+  { name = "BUANDERIE",   device = "sensor" },
+  { name = "GRENIER",     device = "camera" },
+  { name = "JARDIN",      device = "bulb" },
+  { name = "VÉRANDA",     device = "thermo" },
+  { name = "SERVER ROOM", device = "server" },
+]
+
+# Shown as Home Assistant style "integrations". TODO: add Zigbee2MQTT, ESPHome, Proxmox… if you use them.
+integrations = [
+  { name = "Home Assistant", kind = "Domotique · core",       short = "HA",  color = "#18bcf2" },
+  { name = "Homebridge",     kind = "HomeKit bridge",          short = "HB",  color = "#ff9f43" },
+  { name = "Docker",         kind = "Containers",              short = "DK",  color = "#2496ed" },
+  { name = "Traefik",        kind = "Reverse proxy · TLS",     short = "TR",  color = "#24a1c1" },
+  { name = "CrowdSec",       kind = "IPS · bouncers",          short = "CS",  color = "#ff4d6d" },
+  { name = "Runtipi",        kind = "Self-hosted apps",        short = "RT",  color = "#39ff88" },
+  { name = "ASUSTOR NAS",    kind = "Storage · homelab",       short = "NAS", color = "#ffb547" },
+  { name = "MCP servers",    kind = "AI ↔ infra gateways",     short = "MCP", color = "#ff2fd0" },
+]
+
+# Public repositories shown in "Featured projects" (stars & descriptions are fetched live).
+featured = [
+  { repo = "lacale-prowlarr-indexer", icon = "🏴‍☠️" },
+  { repo = "asustor-runtipi",         icon = "📦" },
+  { repo = "aiometadata-docker",      icon = "🐳" },
+  { repo = "eurodns-mcp",             icon = "🌐" },
+  { repo = "playguard-ha",            icon = "🏠" },
+  { repo = "docker-crowdsec-dashboard", icon = "🛡️" },
+]
+
+# Contact links (label, url). TODO: add LinkedIn / blog if you want them public.
+links = [
+  { label = "GitHub", url = "https://github.com/JigSawFr", logo = "github" },
+]
