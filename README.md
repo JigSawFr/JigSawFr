@@ -26,7 +26,6 @@
 | 📦 | [**asustor-runtipi**](https://github.com/JigSawFr/asustor-runtipi) | 📦 Runtipi package for ASUSTOR NAS - Self-hosted app management platform with 200+ one-click apps, automatic HTTPS, and beautiful web UI. Supports x86-64 & ARM64 architectures. | 6 |
 | 🐳 | [**aiometadata-docker**](https://github.com/JigSawFr/aiometadata-docker) | 🐳 Automated Docker images for AIOMetadata - The Ultimate Stremio Metadata Addon \| Multi-arch (amd64/arm64) \| Auto-sync with upstream \| Cosign signed | 3 |
 | 🌐 | [**eurodns-mcp**](https://github.com/JigSawFr/eurodns-mcp) | Model Context Protocol server for the EuroDNS User API — domains, DNS zones, subscriptions and SSL. | 1 |
-| 🏠 | [**playguard-ha**](https://github.com/JigSawFr/playguard-ha) | Home Assistant integration for PlayGuard, the Nintendo Switch parental controls homebrew, over MQTT: play time, limits, extra time, bedtime, console lock and long-term statistics. HACS custom repository. | 0 |
 | 🛡️ | [**docker-crowdsec-dashboard**](https://github.com/JigSawFr/docker-crowdsec-dashboard) | Crowdsec dashboard. | 1 |
 
 ### 📡 Connect · Me contacter
