@@ -22,7 +22,7 @@
 ### 📦 Featured devices · Projets phares
 | | Project / Projet | What it does | ★ |
 |:-:|---|---|:-:|
-| 🏴‍☠️ | [**lacale-prowlarr-indexer**](https://github.com/JigSawFr/lacale-prowlarr-indexer) `archived` | La-Cale Prowlarr API Indexer | 140 |
+| 🏴‍☠️ | [**lacale-prowlarr-indexer**](https://github.com/JigSawFr/lacale-prowlarr-indexer) `archived` | La-Cale Prowlarr API Indexer | 139 |
 | 📦 | [**asustor-runtipi**](https://github.com/JigSawFr/asustor-runtipi) | 📦 Runtipi package for ASUSTOR NAS - Self-hosted app management platform with 200+ one-click apps, automatic HTTPS, and beautiful web UI. Supports x86-64 & ARM64 architectures. | 6 |
 | 🐳 | [**aiometadata-docker**](https://github.com/JigSawFr/aiometadata-docker) | 🐳 Automated Docker images for AIOMetadata - The Ultimate Stremio Metadata Addon \| Multi-arch (amd64/arm64) \| Auto-sync with upstream \| Cosign signed | 3 |
 | 🌐 | [**eurodns-mcp**](https://github.com/JigSawFr/eurodns-mcp) | Model Context Protocol server for the EuroDNS User API — domains, DNS zones, subscriptions and SSL. | 1 |
